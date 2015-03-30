@@ -40,10 +40,36 @@ else
    fi
 fi
 
-# Get list of physical disks that compose the volume-group
-PELIST=$(pvs --noheadings -S vg_name=${TARGVG} -o pv_name 2>&1)
-echo ${PELIST} | sed 's/[0-9]*$//'
+# Create array of disks underpinning selected VG
+function PVtoArray() {
+   local COUNT=0
+   for PV in `pvs --noheadings -S vg_name=${TARGVG} -o pv_name 2>&1 | \
+      sed 's/[0-9]*$//' | sort -u`
+   do
+      PVARRAY[${COUNT}]="${PV}"
+      local COUNT=$((${COUNT} +1))
+   done
+}
 
-# GET EBS Volume-list
-# aws ec2 describe-volumes --filters Name=attachment.instance-id,Values=i-7396527e --query Volumes[].VolumeId --output text
+# Create array of attached EBS volumes
+function EVolToArray() {
+   local COUNT=0
+   for VODLID in `aws ec2 describe-volumes --filters \
+      Name=attachment.instance-id,Values=${THISINSTID} --query \
+      Volumes[].VolumeId --output text`
+   do
+      EBSARRAY[${COUNT}]="${VODLID}"
+      local COUNT=$((${COUNT} +1))
+   done
+}
 
+PVtoArray
+EVolToArray
+
+# Just testing that array-stuffing works
+echo ${PVARRAY[@]}
+echo ${EBSARRAY[@]}
+
+# Iterate PVARRAY to find elements from EBSARRAY, then merge
+
+# Iterate merged array to snapshot only EBSes in VG
