@@ -19,7 +19,7 @@
 THISINSTID=`curl -s http://169.254.169.254/latest/meta-data/instance-id`
 DATESTMP=`date "+%Y%m%d%H%M"`
 LOGDIR="/var/log/EBSbackup"
-LOGFILE="${LOGDIR}/backup-${DATE}.log"
+LOGFILE="${LOGDIR}/backup-${DATESTMP}.log"
 
 # Define how long to keep backups by default
 DEFRETAIN="7"					# Value expressed in days
@@ -29,7 +29,26 @@ KEEPHORIZ="$((${DAYINSEC} * ${DEFRETAIN}))"	# Keep-interval (in seconds)
 EXPBEYOND="$((${CURCTIME} - ${KEEPHORIZ}))"	# Expiry horizon (in seconds)
 EXPDATE=`date -d @${EXPBEYOND} "+%Y/%m/%d @ %H:%M"`	# Expiry horizon
 
-echo "Host Instance-ID: ${THISINSTID}"
-echo "Current time in Seconds: ${CURCTIME}"
-echo "Retention Horizon: ${KEEPHORIZ}"
-echo "Kill if older: ${EXPBEYOND} (${EXPDATE})"
+# Determine if LOGFILE is usable by this user;
+# - if not, try to create and set a usable location
+# - if can't, change LOGFILE to dump to world-writable location
+#   (e.g., /var/tmp)
+function SetLogDest() {
+}
+
+# Output log-data to multiple locations
+function MultiLog() {
+   echo "${1}"
+   logger -p local0.info -t [EBSsnap] "${1}"
+   # We'll add this later...
+   #    This only works if ${LOGFILE} exists and invoking-user has
+   #    permissions to log location.
+   #    Uncomment when SetLogDest() is functional.
+   # echo "${1}" >> ${LOGFILE}
+
+}
+
+MultiLog "Host Instance-ID: ${THISINSTID}"
+MultiLog "Current time in Seconds: ${CURCTIME}"
+MultiLog "Retention Horizon: ${KEEPHORIZ}"
+MultiLog "Kill if older: ${EXPBEYOND} (${EXPDATE})"
