@@ -20,7 +20,7 @@ SCRIPTDIR=`dirname ${WHEREAMI}`
 
 # Put the bulk of our variables into an external file so they
 # can be easily re-used across scripts
-source ${SCRIPTDIR}/globalVars.env
+source ${SCRIPTDIR}/commonVars.env
 
 
 # Determine if LOGFILE is usable by this user;
