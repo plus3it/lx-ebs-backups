@@ -68,7 +68,10 @@ function GottaCatchemAll() {
    SNAPLABEL="$(hostname -s)_${THISINSTID}_bkup-${DATESTMP}"
    while [ ${COUNT} -lt ${ARRCT} ]
    do
-      echo "Backup-Tag for ${EBSARRAY[${COUNT}]}: ${SNAPLABEL}"
+    # echo "Backup-Tag for ${EBSARRAY[${COUNT}]}: ${SNAPLABEL}"
+      SNAPNID=$(aws ec2 create-snapshot --outup=text --description \
+         ${SNAPLABEL} --volume-id ${EBSARRAY[${COUNT}]} --query SnapshotId)
+      MultiLog "New snapshot ID is ${SNAPNID}"
       COUNT=$((${COUNT} + 1))
    done
 }
