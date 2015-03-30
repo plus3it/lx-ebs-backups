@@ -57,7 +57,7 @@ function AllMyDisks() {
       Volumes[].VolumeId --output text`
    do
       EBSARRAY[${COUNT}]=${ELEMENT}
-      COUNT=$((${COUNT} + 1))
+      local COUNT=$((${COUNT} + 1))
    done
 }
 
@@ -69,10 +69,11 @@ function GottaCatchemAll() {
    while [ ${COUNT} -lt ${ARRCT} ]
    do
     # echo "Backup-Tag for ${EBSARRAY[${COUNT}]}: ${SNAPLABEL}"
-      SNAPNID=$(aws ec2 create-snapshot --outup=text --description \
+      SNAPNID=$(aws ec2 create-snapshot --output=text --description \
          ${SNAPLABEL} --volume-id ${EBSARRAY[${COUNT}]} --query SnapshotId)
       MultiLog "New snapshot ID is ${SNAPNID}"
-      COUNT=$((${COUNT} + 1))
+      TAGIT=$(aws ec2 create-tags --resource ${SNAPNID} --tags Key='Creation Process',Value='Automated Backup Script')
+      local COUNT=$((${COUNT} + 1))
    done
 }
 
