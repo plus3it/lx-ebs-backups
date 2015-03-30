@@ -40,5 +40,10 @@ else
    fi
 fi
 
+# Get list of physical disks that compose the volume-group
 PELIST=$(pvs --noheadings -S vg_name=${TARGVG} -o pv_name 2>&1)
-echo ${PELIST}
+echo ${PELIST} | sed 's/[0-9]*$//'
+
+# GET EBS Volume-list
+# aws ec2 describe-volumes --filters Name=attachment.instance-id,Values=i-7396527e --query Volumes[].VolumeId --output text
+
