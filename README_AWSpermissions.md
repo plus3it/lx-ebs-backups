@@ -18,3 +18,5 @@ The scripts in this collection are designed to make use of either instance permi
   - ec2:ResetSnapshotAttribute
 - Resource:
   - "*"
+
+Note: while the above role-permissions will allow the AWS-actions to function even when run from an un-privileged local account, privileged access will be required to enable to run privileged OS-level commands (e.g., `fsfreeze`)
