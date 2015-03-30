@@ -15,19 +15,13 @@
 # - This script released under the Apache 2.0 OSS License
 #
 ######################################################################
+WHEREAMI=`readlink -f ${0}`
+SCRIPTDIR=`dirname ${WHEREAMI}`
 
-THISINSTID=`curl -s http://169.254.169.254/latest/meta-data/instance-id`
-DATESTMP=`date "+%Y%m%d%H%M"`
-LOGDIR="/var/log/EBSbackup"
-LOGFILE="${LOGDIR}/backup-${DATESTMP}.log"
+# Put the bulk of our variables into an external file so they
+# can be easily re-used across scripts
+source ${SCRIPTDIR}/globalVars.env
 
-# Define how long to keep backups by default
-DEFRETAIN="7"					# Value expressed in days
-CURCTIME=`date "+%s"`				# Current time in seconds
-DAYINSEC="$((60 * 60 * 24))"			# Seconds in a day
-KEEPHORIZ="$((${DAYINSEC} * ${DEFRETAIN}))"	# Keep-interval (in seconds)
-EXPBEYOND="$((${CURCTIME} - ${KEEPHORIZ}))"	# Expiry horizon (in seconds)
-EXPDATE=`date -d @${EXPBEYOND} "+%Y/%m/%d @ %H:%M"`	# Expiry horizon
 
 # Determine if LOGFILE is usable by this user;
 # - if not, try to create and set a usable location
