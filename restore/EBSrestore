@@ -1,0 +1,10 @@
+#!/bin/sh
+#
+# Note: this script assumes that you are attaching an EBS to an
+#       existing instance, either with the intention to recover 
+#       individual files or to act as a full restore of a damaged 
+#       or destroyed EBS. The full restore may be made available
+#       on a new instance or on the instance that originally
+#       generated the EBS snapshot.
+#
+######################################################################
