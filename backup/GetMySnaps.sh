@@ -17,6 +17,7 @@
 WHEREAMI=`readlink -f ${0}`
 SCRIPTDIR=`dirname ${WHEREAMI}`
 TARGVG=${1:-UNDEF}
+TZ=zulu
 
 # Put the bulk of our variables into an external file so they
 # can be easily re-used across scripts
@@ -30,7 +31,17 @@ function SnapListToArray() {
       "Snapshots[].{F1:SnapshotId,F3:Description,F2:StartTime}" | \
       tr '\t' ';'`
    do
-      SNAPARRAY[${COUNT}]="${SNAPLIST}"
+      SNAPIDEN=`echo ${SNAPLIST} | cut -d ";" -f 1`
+      # Convert time - ditch unneeded tokens
+      SNAPTIME=`echo ${SNAPLIST} | cut -d ";" -f 2 | sed '{
+         s/-//g
+         s/://g
+         s/[0-9][0-9]\.[0-9]*Z//
+         s/T//
+      }'`
+      SNAPDESC=`echo ${SNAPLIST} | cut -d ";" -f 3`
+      FIXLIST="${SNAPIDEN};${SNAPTIME};${SNAPDESC}"
+      SNAPARRAY[${COUNT}]="${FIXLIST}"
       local COUNT=$((${COUNT} +1))
    done
 }
