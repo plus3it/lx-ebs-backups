@@ -38,7 +38,7 @@ function SnapListToArray() {
    for SNAPLIST in `aws ec2 describe-snapshots --output=text --filter \
       "Name=description,Values=*_${THISINSTID}-bkup*" --filters \
       "Name=tag:Created By,Values=Automated Backup" --query \
-      "Snapshots[].{F1_SnapID:SnapshotId,F2_Start:StartTime}" | tr '\t' ';'`
+      "Snapshots[].{F1:SnapshotId,F2:StartTime,F3:Description}" | tr '\t' ';'`
    do
       local SNAPIDEN=`echo ${SNAPLIST} | cut -d ";" -f 1`
       # Convert time - ditch unneeded tokens
@@ -48,7 +48,9 @@ function SnapListToArray() {
          s/[0-9][0-9]\.[0-9]*Z//
          s/T//
       }'`
-      FIXLIST="${SNAPIDEN};${SNAPTIME}"
+      local SNAPDESC=`echo ${SNAPLIST} | cut -d ";" -f 3`
+      local SNAPGRUP=`echo ${SNAPDESC} | sed 's/^.*-bkup-/GROUP_/'`
+      FIXLIST="${SNAPIDEN};${SNAPTIME};${SNAPGRUP}"
       SNAPARRAY[${COUNT}]="${FIXLIST}"
       local COUNT=$((${COUNT} +1))
    done
@@ -62,6 +64,7 @@ function CheckSnapAge(){
    do
       local SNAPID=`echo ${SNAPARRAY[${COUNT}]} | cut -d ";" -f 1`
       local SNAPDTJ=`echo ${SNAPARRAY[${COUNT}]} | cut -d ";" -f 2`
+      local SNAPGRP=`echo ${SNAPARRAY[${COUNT}]} | cut -d ";" -f 3`
       local COUNT=$((${COUNT} +1))
       local SNAPDTE=$(date -d "${SNAPDTJ:0:8} ${SNAPDTJ:8:2}:${SNAPDTJ:10:2}:00" "+%s")
       if [ $((${CURCTIME} - ${SNAPDTE})) -gt ${EXPBEYOND} ]
@@ -75,7 +78,7 @@ function CheckSnapAge(){
             MultiLog "Deleted"
          fi
       else
-         MultiLog "${SNAPID} is less than expiry-horizon (keeping)"
+         MultiLog "${SNAPID} (${SNAPGRP}) is younger than expiry-horizon (keeping)"
       fi
    done
 }
