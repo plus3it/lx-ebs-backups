@@ -15,13 +15,19 @@
 # - This script released under the Apache 2.0 OSS License
 #
 ######################################################################
+
+# Starter Variables
+PATH=/sbin:/usr/sbin:/bin:/usr/bin:/opt/AWScli/bin
 WHEREAMI=`readlink -f ${0}`
 SCRIPTDIR=`dirname ${WHEREAMI}`
-TARGVG=${1:-UNDEF}
 
 # Put the bulk of our variables into an external file so they
 # can be easily re-used across scripts
 source ${SCRIPTDIR}/commonVars.env
+
+# SCRIPT Variables
+TARGVG=${1:-UNDEF}
+BKNAME="$(hostname -s)_${THISINSTID}-bkup-${DATESTMP}"
 
 # Check to see if a Volume group was passed...
 if [ ${TARGVG} == "UNDEF" ]
@@ -56,26 +62,49 @@ function EVolToArray() {
    local COUNT=0
    for VODLID in `aws ec2 describe-volumes --filters \
       "Name=attachment.instance-id,Values=${THISINSTID}" --query \
-      "Volumes[].Attachments[].{VID:VolumeId,HDD:Device}" | \
-       awk '{printf("%s:%s\n",$1,$2)}'`
+      "Volumes[].Attachments[].VolumeId" --output text`
    do
       EBSARRAY[${COUNT}]="${VODLID}"
       local COUNT=$((${COUNT} +1))
    done
 }
 
+# Create list of filesystems hosted on VG
+function GetFSlist() {
+   local COUNT=0
+   for FSNAME in `mount | awk '/\/'${TARGVG}'-/{print $3}'`
+   do
+      FSLISTARR[${COUNT}]="${FSNAME}"
+      local COUNT=$((${COUNT} +1))
+   done
+}
+  
+
 PVtoArray
 EVolToArray
+GetFSlist
 
-# Just testing that array-stuffing works
-echo ${PVARRAY[@]}
 echo ${EBSARRAY[@]}
 
-# KVP-list of AWS volume-attachment info
-## aws ec2 describe-volumes --filters \
-##    "Name=attachment.instance-id,Values=${THISINSTID}" --query \
-##    "Volumes[].Attachments[].{VID:VolumeId,HDD:Device}" --output text
+# Freeze filesystems
+for FS in ${FSLISTARR[@]}
+do
+   printf "Freezing ${FS}... "
+   fsfreeze -f ${FS} && echo
+done
 
-# Iterate PVARRAY to find elements from EBSARRAY, then merge
+# Snapshot volumes
+for EBS in ${EBSARRAY[@]}
+do
+   echo "Snapping EBS volume: ${EBS}"
+   SNAPIT=$(aws ec2 create-snapshot --output=text --description ${BKNAME} \
+     --volume-id ${EBS} --query SnapshotId)
+   aws ec2 create-tags --resource ${SNAPIT} --tags Key="Created By",Value="Automated Backup"
+done
 
-# Iterate merged array to snapshot only EBSes in VG
+# Unfreeze hosted filesystems
+for FS in ${FSLISTARR[@]}
+do
+   printf "Unfreezing ${FS}... "
+   fsfreeze -u ${FS} && echo
+done
