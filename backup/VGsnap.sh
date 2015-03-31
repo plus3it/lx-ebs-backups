@@ -100,6 +100,9 @@ do
    SNAPIT=$(aws ec2 create-snapshot --output=text --description ${BKNAME} \
      --volume-id ${EBS} --query SnapshotId)
    aws ec2 create-tags --resource ${SNAPIT} --tags Key="Created By",Value="Automated Backup"
+   aws ec2 create-tags --resource ${SNAPIT} --tags Key="Name",Value="AutoBack (${THISINSTID}) $(date '+%Y-%m%-d')"
+   aws ec2 create-tags --resource ${SNAPIT} --tags Key="Snapshot Group",Value="${DATESTMP} (${THISINSTID})"
+
 done
 
 # Unfreeze hosted filesystems
