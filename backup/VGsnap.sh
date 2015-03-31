@@ -55,8 +55,9 @@ function PVtoArray() {
 function EVolToArray() {
    local COUNT=0
    for VODLID in `aws ec2 describe-volumes --filters \
-      Name=attachment.instance-id,Values=${THISINSTID} --query \
-      Volumes[].VolumeId --output text | awk '{printf("%s:%s\n",$1,$2)}'`
+      "Name=attachment.instance-id,Values=${THISINSTID}" --query \
+      "Volumes[].Attachments[].{VID:VolumeId,HDD:Device}" | \
+       awk '{printf("%s:%s\n",$1,$2)}'`
    do
       EBSARRAY[${COUNT}]="${VODLID}"
       local COUNT=$((${COUNT} +1))
