@@ -23,6 +23,13 @@ TZ=zulu
 # can be easily re-used across scripts
 source ${SCRIPTDIR}/commonVars.env
 
+# Output log-data to multiple locations
+function MultiLog() {
+   echo "${1}"
+   logger -p local0.info -t [SnapMaint] "${1}"
+}
+
+
 # Grab a filtered list candidate snapshots and dump to an array
 # * Filter for "Created By" equals "Automated Backup"
 # * Filter for "Description" contains "<INSTANCE_ID>-bkup"
@@ -59,10 +66,16 @@ function CheckSnapAge(){
       local SNAPDTE=$(date -d "${SNAPDTJ:0:8} ${SNAPDTJ:8:2}:${SNAPDTJ:10:2}:00" "+%s")
       if [ $((${CURCTIME} - ${SNAPDTE})) -gt ${EXPBEYOND} ]
       then
-         printf "${SNAPID} is older than expiry-horizon. Deleteing..."
-         aws ec2 delete-snapshot --snapshot-id ${SNAPID} && echo
+         MultiLog "${SNAPID} is older than expiry-horizon. Deleteing..."
+         aws ec2 delete-snapshot --snapshot-id ${SNAPID} 
+         if [ $? -ne 0 ]
+         then
+            MultiLog "Deletion failed"
+         else
+            MultiLog "Deleted"
+         fi
       else
-         echo "${SNAPID} is less than expiry-horizon (keeping)"
+         MultiLog "${SNAPID} is less than expiry-horizon (keeping)"
       fi
    done
 }
