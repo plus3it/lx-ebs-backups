@@ -24,28 +24,48 @@ TZ=zulu
 source ${SCRIPTDIR}/commonVars.env
 
 # Grab a filtered list candidate snapshots and dump to an array
+# * Filter for "Created By" equals "Automated Backup"
+# * Filter for "Description" contains "<INSTANCE_ID>-bkup"
 function SnapListToArray() {
    local COUNT=0
    for SNAPLIST in `aws ec2 describe-snapshots --output=text --filter \
-      "Name=description,Values=*_${THISINSTID}-bkup*" --query \
-      "Snapshots[].{F1:SnapshotId,F3:Description,F2:StartTime}" | \
-      tr '\t' ';'`
+      "Name=description,Values=*_${THISINSTID}-bkup*" --filters \
+      "Name=tag:Created By,Values=Automated Backup" --query \
+      "Snapshots[].{F1_SnapID:SnapshotId,F2_Start:StartTime}" | tr '\t' ';'`
    do
-      SNAPIDEN=`echo ${SNAPLIST} | cut -d ";" -f 1`
+      local SNAPIDEN=`echo ${SNAPLIST} | cut -d ";" -f 1`
       # Convert time - ditch unneeded tokens
-      SNAPTIME=`echo ${SNAPLIST} | cut -d ";" -f 2 | sed '{
+      local SNAPTIME=`echo ${SNAPLIST} | cut -d ";" -f 2 | sed '{
          s/-//g
          s/://g
          s/[0-9][0-9]\.[0-9]*Z//
          s/T//
       }'`
-      SNAPDESC=`echo ${SNAPLIST} | cut -d ";" -f 3`
-      FIXLIST="${SNAPIDEN};${SNAPTIME};${SNAPDESC}"
+      FIXLIST="${SNAPIDEN};${SNAPTIME}"
       SNAPARRAY[${COUNT}]="${FIXLIST}"
       local COUNT=$((${COUNT} +1))
    done
 }
 
-SnapListToArray
+function CheckSnapAge(){
+   # Date conversion template
+   # $(date -d "${MYDATE:0:8} ${MYDATE:8:2}:${MYDATE:10:2}:00" "+%s")
+   local COUNT=0
+   while [ ${COUNT} -lt ${#SNAPARRAY[@]} ]
+   do
+      local SNAPID=`echo ${SNAPARRAY[${COUNT}]} | cut -d ";" -f 1`
+      local SNAPDTJ=`echo ${SNAPARRAY[${COUNT}]} | cut -d ";" -f 2`
+      local COUNT=$((${COUNT} +1))
+      local SNAPDTE=$(date -d "${SNAPDTJ:0:8} ${SNAPDTJ:8:2}:${SNAPDTJ:10:2}:00" "+%s")
+      if [ $((${CURCTIME} - ${SNAPDTE})) -gt ${EXPBEYOND} ]
+      then
+         printf "${SNAPID} is older than expiry-horizon. Deleteing..."
+         aws ec2 delete-snapshot --snapshot-id ${SNAPID} && echo
+      else
+         echo "${SNAPID} is less than expiry-horizon (keeping)"
+      fi
+   done
+}
 
-echo ${SNAPARRAY[@]}
+SnapListToArray
+CheckSnapAge
