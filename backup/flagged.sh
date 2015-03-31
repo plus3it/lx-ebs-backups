@@ -47,6 +47,7 @@ do
 	       ;;
 	    *)
 	       echo "A VG-name has been specified: '${2}'"
+               ${SCRIPTDIR}/VGsnap.sh "${2}"
 	       shift 2;
 	       ;;
 	 esac
