@@ -56,11 +56,14 @@ function SnapListToArray() {
 function CheckSnapAge(){
    local COUNT=0
 
+   MultiLog "Beginning stale snapshot cleanup (killing files older than ${EXPDATE})"
+
    while [ ${COUNT} -lt ${#SNAPARRAY[@]} ]
    do
       local SNAPIDEN=`echo ${SNAPARRAY[${COUNT}]} | cut -d ";" -f 1`
       local SNAPTIME=`echo ${SNAPARRAY[${COUNT}]} | cut -d ";" -f 2`
       local SNAPGRUP=`echo ${SNAPARRAY[${COUNT}]} | cut -d ";" -f 3`
+
 
       if [ $((${CURCTIME} - ${SNAPTIME})) -gt $((${CURCTIME} - ${EXPBEYOND})) ]
       then
