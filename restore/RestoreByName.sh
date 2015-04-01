@@ -72,6 +72,7 @@ function GetSnapList() {
 
 # Create EBSes from snaps
 function SnapToEBS() {
+   local COUNT=0
    for SNAPID in ${RESTORELST}
    do
       MultiLog "Creating EBS from snapshot \"${SNAPID}\"... "
@@ -85,11 +86,14 @@ function SnapToEBS() {
          MultiLog "EBS-creation failed!"
       # Add a meaningful name to the EBS if creation succeeds
       else
-	 MultiLog "Created EBS ${NEWEBS}"
 	 aws ec2 create-tags --resource ${NEWEBS} --tags \
 	    "Key=Name,Value=Restore of ${SNAPNAME}"
+         VOLLIST[${COUNT}]=${NEWEBS}
+         local COUNT=$((${COUNT} + 1))
       fi
    done
+   local CREATEDEBS=$(echo "${VOLLIST[@]}")
+   MultiLog "Created EBS(es): ${CREATEDEBS}"
 }
 
 RESTORELST="$(GetSnapList)"
