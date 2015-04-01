@@ -37,10 +37,25 @@ DEFRETAIN="7"
 
 &nbsp;
 
+Set a fixed date-stamp for use within scripts denoted in seconds-since-epoch format
 ~~~
-CURCTIME=`date "+%s"`					# Current time in seconds
-DAYINSEC="$((60 * 60 * 24))"				# Seconds in a day
-KEEPHORIZ="$((${DAYINSEC} * ${DEFRETAIN}))"		# Keep-interval (in seconds)
+CURCTIME=`date "+%s"`
+~~~
+
+&nbsp;
+
+Set a variable to contain the number of seconds in a day.
+~~~
+DAYINSEC="$((60 * 60 * 24))"
+~~~
+
+&nbsp;
+
+Set a variable to contain the number of seconds within the snapshot keep-window
+~~~
+KEEPHORIZ="$((${DAYINSEC} * ${DEFRETAIN}))"
+~~~
+~~~
 EXPBEYOND="$((${CURCTIME} - ${KEEPHORIZ}))"		# Expiry horizon (in seconds)
 EXPDATE=`date -d @${EXPBEYOND} "+%Y/%m/%d @ %H:%M"`	# Expiry horizon
 ~~~
