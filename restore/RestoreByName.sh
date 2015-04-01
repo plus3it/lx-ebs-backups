@@ -159,6 +159,14 @@ function EBStoSlot() {
    fi
 }
 
+function RestoreImport() {
+   (echo "NOT IMPLEMENTED. Unresolved Red Hat BZ #1202785 prevents use of"
+   printf "\t'vgimportclone' utility\n\n"
+   echo "Restoration import will look something like:"
+   printf "\tvgimportclone -n OrclVG_Restore -i /dev/xvdf1 /dev/xvdg1 \\ \n"
+   printf "\t/dev/xvdm1 /dev/xvdn1 /dev/xvdo1\n") >&2
+}
+
 # Call snapshot-finder function
 RESTORELST="$(GetSnapList)"
 
@@ -171,4 +179,5 @@ else
    SnapToEBS
    ComputeFreeSlots
    EBStoSlot
+   RestoreImport
 fi
