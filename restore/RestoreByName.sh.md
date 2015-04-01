@@ -1,3 +1,12 @@
+# Functionality
+The this script accepts the name of an snapshot "`Name`" attribute and then performs the following actions:
+
+1. Creates EBS(es) from volume snapshots matching the passed "`Name`" attribute. The EBS(es) will be created within the same AWS availability zone (AZ) as the host invoking the script.
+2. Computes a list of free attachment points. This script will determine which of the volume attachment-points (per current AWS limitations, `/dev/sdf` through `/dev/sdz`) are currently occupied, then construct a list of the unused volume attachment-points.
+3. Using the free-slot list generated in the prior list, attach the newly-created EBS(es) to the invoking Linux-based instance. Free slots are attached to from lowest to highest, starting from `/dev/sdf` - or the lowest available slot - until all slots are exhausted. If there are more elements in a consistency-group than there are available free slots, the script will abort.
+4. [FUTURE CAPABILITY] Once the target EBSes are attached to the instance, the script will attempt to import any LVM2 volume groups found on the EBSes.
+
+
 # Assumptions/Requirements
 This script assumes that all of the elements of a consistency group share a common "`Name`" attribute. While it is expected that the "`Name`" attribute's value will be of the form:
 
