@@ -96,11 +96,58 @@ function SnapToEBS() {
    MultiLog "Created EBS(es): ${CREATEDEBS}"
 }
 
+# Compute list of available attachment slots
+function ComputeFreeSlots() {
+   # List of disk slots AWS recommends for Linux instances
+   ALLSLOTS=(
+      /dev/sdf
+      /dev/sdg
+      /dev/sdh
+      /dev/sdi
+      /dev/sdj
+      /dev/sdk
+      /dev/sdl
+      /dev/sdm
+      /dev/sdn
+      /dev/sdo
+      /dev/sdp
+      /dev/sdq
+      /dev/sdr
+      /dev/sds
+      /dev/sdt
+      /dev/sdu
+      /dev/sdv
+      /dev/sdw
+      /dev/sdx
+      /dev/sdy
+      /dev/sdz
+   )
+
+   # Determine used DeviceName slots to generate list of free slots
+   USED=($(aws ec2 describe-instances --output=text --instance-ids \
+      ${THISINSTID} --query \
+      "Reservations[].Instances[].BlockDeviceMappings[].DeviceName"))
+
+   local COUNT=0
+   # Prune candidate slot-list
+   while [ ${COUNT} -lt ${#USED[@]} ]
+   do
+      ALLSLOTS=( $(echo ${ALLSLOTS[@]} | sed 's#'${USED[${COUNT}]}'##'))
+      local COUNT=$((${COUNT} +1))
+   done
+}
+
+# Call snapshot-finder function
 RESTORELST="$(GetSnapList)"
+
+# Bail if we have an empty list
 if [ "${RESTORELST}" = "" ]
 then
    MultiLog "No matching-snapshots found for restore" >&2
    exit 1
 else
    SnapToEBS
+   ComputeFreeSlots
+   # ${VOLLIST[@]} contains list of new restore-EBS(es)
+   # ${ALLSLOTS[@]} contains list of available slots
 fi
