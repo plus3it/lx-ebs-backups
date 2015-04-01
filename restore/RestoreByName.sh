@@ -137,6 +137,28 @@ function ComputeFreeSlots() {
    done
 }
 
+# Map EBS(es) to free slot(s)
+function EBStoSlot() {
+   if [ ${#VOLLIST[@]} -le ${#ALLSLOTS[@]} ]
+   then
+      local COUNT=0
+
+      while [ ${COUNT} -lt ${#VOLLIST[@]} ]
+      do
+         MultiLog "Mapping ${VOLLIST[${COUNT}]} to ${ALLSLOTS[${COUNT}]}"
+         aws ec2 attach-volume --output=text \
+             --volume-id ${VOLLIST[${COUNT}]} \
+             --instance-id ${THISINSTID} \
+             --device ${ALLSLOTS[${COUNT}]} > /dev/null 2>&1
+         if [ $? -ne 0 ]
+	 then
+	    MultiLog "Failed to map ${VOLLIST[${COUNT}]} to ${ALLSLOTS[${COUNT}]}" >&2
+	 fi
+         local COUNT=$((${COUNT} + 1))
+      done
+   fi
+}
+
 # Call snapshot-finder function
 RESTORELST="$(GetSnapList)"
 
@@ -148,6 +170,5 @@ then
 else
    SnapToEBS
    ComputeFreeSlots
-   # ${VOLLIST[@]} contains list of new restore-EBS(es)
-   # ${ALLSLOTS[@]} contains list of available slots
+   EBStoSlot
 fi
