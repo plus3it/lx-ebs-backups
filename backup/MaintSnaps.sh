@@ -40,16 +40,13 @@ function SnapListToArray() {
       "Name=tag:Created By,Values=Automated Backup" --query \
       "Snapshots[].{F1:SnapshotId,F2:StartTime,F3:Description}" | tr '\t' ';'`
    do
-      local SNAPIDEN=`echo ${SNAPLIST} | cut -d ";" -f 1`
-      # Convert time - ditch unneeded tokens
-      local SNAPTIME=`echo ${SNAPLIST} | cut -d ";" -f 2 | sed '{
-         s/-//g
-         s/://g
-         s/[0-9][0-9]\.[0-9]*Z//
-         s/T//
-      }'`
-      local SNAPDESC=`echo ${SNAPLIST} | cut -d ";" -f 3`
-      local SNAPGRUP=`echo ${SNAPDESC} | sed 's/^.*-bkup-/GROUP_/'`
+      local SNAPIDEN=$(echo ${SNAPLIST} | cut -d ";" -f 1)
+      local SNAPTIME=$( date -d "`echo ${SNAPLIST} | cut -d ";" -f 2 | sed '{
+         s/\....Z$//
+         s/T/ /
+      }'`" "+%s")
+      local SNAPDESC=$(echo ${SNAPLIST} | cut -d ";" -f 3)
+      local SNAPGRUP=$(echo ${SNAPDESC} | sed 's/^.*-bkup-/GROUP_/')
       FIXLIST="${SNAPIDEN};${SNAPTIME};${SNAPGRUP}"
       SNAPARRAY[${COUNT}]="${FIXLIST}"
       local COUNT=$((${COUNT} +1))
@@ -57,20 +54,19 @@ function SnapListToArray() {
 }
 
 function CheckSnapAge(){
-   # Date conversion template
-   # $(date -d "${MYDATE:0:8} ${MYDATE:8:2}:${MYDATE:10:2}:00" "+%s")
    local COUNT=0
+
    while [ ${COUNT} -lt ${#SNAPARRAY[@]} ]
    do
-      local SNAPID=`echo ${SNAPARRAY[${COUNT}]} | cut -d ";" -f 1`
-      local SNAPDTJ=`echo ${SNAPARRAY[${COUNT}]} | cut -d ";" -f 2`
-      local SNAPGRP=`echo ${SNAPARRAY[${COUNT}]} | cut -d ";" -f 3`
-      local COUNT=$((${COUNT} +1))
-      local SNAPDTE=$(date -d "${SNAPDTJ:0:8} ${SNAPDTJ:8:2}:${SNAPDTJ:10:2}:00" "+%s")
-      if [ $((${CURCTIME} - ${SNAPDTE})) -gt ${EXPBEYOND} ]
+      local SNAPIDEN=`echo ${SNAPARRAY[${COUNT}]} | cut -d ";" -f 1`
+      local SNAPTIME=`echo ${SNAPARRAY[${COUNT}]} | cut -d ";" -f 2`
+      local SNAPGRUP=`echo ${SNAPARRAY[${COUNT}]} | cut -d ";" -f 3`
+
+      echo "$((${CURCTIME} - ${SNAPTIME})) -gt $((${CURCTIME} - ${EXPBEYOND}))"
+      if [ $((${CURCTIME} - ${SNAPTIME})) -gt $((${CURCTIME} - ${EXPBEYOND})) ]
       then
-         MultiLog "${SNAPID} is older than expiry-horizon. Deleteing..."
-         aws ec2 delete-snapshot --snapshot-id ${SNAPID} 
+         MultiLog "${SNAPIDEN} is older than expiry-horizon. Deleteing..."
+         ## aws ec2 delete-snapshot --snapshot-id ${SNAPIDEN} 
          if [ $? -ne 0 ]
          then
             MultiLog "Deletion failed"
@@ -78,8 +74,10 @@ function CheckSnapAge(){
             MultiLog "Deleted"
          fi
       else
-         MultiLog "${SNAPID} (${SNAPGRP}) is younger than expiry-horizon (keeping)"
+         MultiLog "${SNAPIDEN} (${SNAPGRUP}) is younger than expiry-horizon (keeping)"
       fi
+
+      local COUNT=$((${COUNT} +1))
    done
 }
 
