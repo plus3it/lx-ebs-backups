@@ -62,11 +62,10 @@ function CheckSnapAge(){
       local SNAPTIME=`echo ${SNAPARRAY[${COUNT}]} | cut -d ";" -f 2`
       local SNAPGRUP=`echo ${SNAPARRAY[${COUNT}]} | cut -d ";" -f 3`
 
-      echo "$((${CURCTIME} - ${SNAPTIME})) -gt $((${CURCTIME} - ${EXPBEYOND}))"
       if [ $((${CURCTIME} - ${SNAPTIME})) -gt $((${CURCTIME} - ${EXPBEYOND})) ]
       then
          MultiLog "${SNAPIDEN} is older than expiry-horizon. Deleteing..."
-         ## aws ec2 delete-snapshot --snapshot-id ${SNAPIDEN} 
+         aws ec2 delete-snapshot --snapshot-id ${SNAPIDEN} 
          if [ $? -ne 0 ]
          then
             MultiLog "Deletion failed"
