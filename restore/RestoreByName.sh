@@ -26,9 +26,39 @@
 #
 ######################################################################
 
+# Starter Variables
+PATH=/sbin:/usr/sbin:/bin:/usr/bin:/opt/AWScli/bin
+WHEREAMI=`readlink -f ${0}`
+SCRIPTDIR=`dirname ${WHEREAMI}`
+
+# Put the bulk of our variables into an external file so they
+# can be easily re-used across scripts
+source ${SCRIPTDIR}/commonVars.env
+
+# Script-specific variables
+SNAPNAME="${1:-UNDEF}"
+INSTANCEAZ=`curl -s http://169.254.169.254/latest/placement/availability-zone/`
+
+# Output log-data to multiple locations
+function MultiLog() {
+   echo "${1}"
+   logger -p local0.info -t [NamedRestore] "${1}"
+}
+
+# Make sure a searchabel Name was passed
+if [ "${SNAPNAME}" = "UNDEF" ]
+then
+   MultiLog "No snapshot Name provided for query. Aborting"
+   exit 1
+fi
+
+# Get list of snspshots matching "Name"
+SNAPLIST=`aws ec2 describe-snapshots --output=text --filter  \
+   "Name=description,Values=*_${THISINSTID}-bkup*" --filters  \
+   "Name=tag:Created By,Values=Automated Backup" --filters  \
+   "Name=tag:Name,Values=${SNAPNAME}" --query  \
+   "Snapshots[].SnapshotId"`
+
 # Query template
-# aws ec2 describe-snapshots --output=text --filter  \
-#    "Name=description,Values=*_i-57e04da1-bkup*" --filters  \
-#    "Name=tag:Created By,Values=Automated Backup" --filters  \
-#    "Name=tag:Name,Values=AutoBack (i-57e04da1) 2015-04-01" --query  \
-#    "Snapshots[].SnapshotId"
+# aws ec2 create-volume --snapshot-id snap-c1260c83 --volume-type \
+#    standard --availability-zone us-west-2b
