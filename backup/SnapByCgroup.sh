@@ -29,3 +29,37 @@ source ${SCRIPTDIR}/commonVars.env
 CONGRP=${1:-UNDEF}
 BKNAME="$(hostname -s)_${THISINSTID}-bkup-${DATESTMP}"
 
+# Output log-data to multiple locations
+function MultiLog() {
+   echo "${1}"
+   logger -p local0.info -t [C-Group] "${1}"
+}
+
+if [ ${CONGRP} = "UNDEF" ]
+then
+   MultiLog "No consistency-group specified. Aborting"
+   exit 1
+fi
+
+# Generate list of related EBS Volume-IDs
+VOLIDS=`aws ec2 describe-volumes --filters \
+   "Name=attachment.instance-id,Values=${THISINSTID}" --filters \
+   "Name=tag:Consistency Group,Values=${CONGRP}"  --query \
+   "Volumes[].Attachments[].VolumeId" --output text`
+
+if [ "${VOLIDS}" = "" ]
+then
+   MultiLog "No volumes found in the requested consistency-group [${CONGRP}]"
+fi
+
+# Snapshot volumes
+for EBS in ${VOLIDS}
+do
+   MultiLog "Snapping EBS volume: ${EBS}"
+   SNAPIT=$(aws ec2 create-snapshot --output=text --description ${BKNAME} \
+     --volume-id ${EBS} --query SnapshotId)
+   aws ec2 create-tags --resource ${SNAPIT} --tags Key="Created By",Value="Automated Backup"
+   aws ec2 create-tags --resource ${SNAPIT} --tags Key="Name",Value="AutoBack (${THISINSTID}) $(date '+%Y-%m%-d')"
+   aws ec2 create-tags --resource ${SNAPIT} --tags Key="Snapshot Group",Value="${DATESTMP} (${THISINSTID})"
+done
+
