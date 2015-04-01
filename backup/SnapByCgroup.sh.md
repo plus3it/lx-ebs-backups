@@ -12,3 +12,5 @@ Invoke the script as follows:
 &nbsp;&nbsp;&nbsp;SnapByCgroup.sh "&lt;CONSISTENCY_GROUP_NAME&gt;"
 
 After invocation all members of the EBS-set should show up in the AWS console as having the same snapshot start-time value.
+
+![Snapshot List](https://7871b168f27495f761e507dbda33cdb07c5c90fb-www.googledrive.com/host/0B6SE-qkPpztNflU1bUtyekZZU091a2ttQXJpMElwTm9UcFNqN1pNMlg2eUlTUkJ0UU5PUVk/EBS-SnapGroups.png "Snap Groups")
