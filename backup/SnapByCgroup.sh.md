@@ -9,6 +9,6 @@ This script is designed to perform consistent backups of a set of EBSes within a
 # Usage
 Invoke the script as follows:
 
-&nbsp;&nbsp;&nbsp;SnapByCgroup.sh "<CONSISTENCY_GROUP_NAME>"
+&nbsp;&nbsp;&nbsp;SnapByCgroup.sh "&lt;CONSISTENCY_GROUP_NAME&gt;"
 
 After invocation all members of the EBS-set should show up in the AWS console as having the same snapshot start-time value.
