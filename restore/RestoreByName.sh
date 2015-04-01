@@ -48,7 +48,7 @@ function MultiLog() {
 # Make sure a searchabel Name was passed
 if [ "${SNAPNAME}" = "UNDEF" ]
 then
-   MultiLog "No snapshot Name provided for query. Aborting"
+   MultiLog "No snapshot Name provided for query. Aborting" >&2
    exit 1
 fi
 
@@ -63,7 +63,7 @@ function GetSnapList() {
    # Make sure our query resulted in a valid match
    if [ "${SNAPLIST}" = "" ]
    then
-      MultiLog "No snapshots found matching pattern \"${SNAPNAME}\". Aborting..."
+      MultiLog "No snapshots found matching pattern \"${SNAPNAME}\". Aborting..." >&2
       exit 1
    else
       echo ${SNAPLIST}
@@ -97,4 +97,10 @@ function SnapToEBS() {
 }
 
 RESTORELST="$(GetSnapList)"
-SnapToEBS
+if [ "${RESTORELST}" = "" ]
+then
+   MultiLog "No matching-snapshots found for restore" >&2
+   exit 1
+else
+   SnapToEBS
+fi
