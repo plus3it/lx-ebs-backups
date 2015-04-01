@@ -55,7 +55,17 @@ Set a variable to contain the number of seconds within the snapshot keep-window
 ~~~
 KEEPHORIZ="$((${DAYINSEC} * ${DEFRETAIN}))"
 ~~~
+
+&nbsp;
+
+Set a variable to specify the image expiry-horizon in seconds-since-epoch format
 ~~~
-EXPBEYOND="$((${CURCTIME} - ${KEEPHORIZ}))"		# Expiry horizon (in seconds)
+EXPBEYOND="$((${CURCTIME} - ${KEEPHORIZ}))"
+~~~
+
+&nbsp;
+
+Set a variable to specify the image expiry-horizon in a human-friendly time format
+~~~
 EXPDATE=`date -d @${EXPBEYOND} "+%Y/%m/%d @ %H:%M"`	# Expiry horizon
 ~~~
