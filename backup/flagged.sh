@@ -50,6 +50,16 @@ BKNAME="$(hostname -s)_${THISINSTID}-bkup-${DATESTMP}"
 ##                                  ##
 ######################################
 
+#########################################
+# Output log-data to multiple locations
+#########################################
+function MultiLog() {
+   echo "${1}"
+   logger -p local0.info -t [Flagger] "${1}"
+   # DEFINE ADDITIONAL OUTPUTS, HERE
+}
+
+
 ############################################
 # Create list of filesystems to (un)freeze
 ############################################
@@ -62,11 +72,11 @@ function FsSpec() {
          FSLIST[${IDX}]=${1}
          ;;
       "")
-         echo "${1} does not exist. Aborting..." >&2
+         MultiLog "${1} does not exist. Aborting..." >&2
          exit 1
          ;;
       *)
-         echo "${1} is not a directory. Aborting..." >&2
+         MultiLog "${1} is not a directory. Aborting..." >&2
          exit 1
          ;;
    esac
@@ -97,12 +107,12 @@ do
 	 # argument is not found
 	 case "$2" in
 	    "")
-	       echo "Error: option required but not specified"
+	       MultiLog "Error: option required but not specified"
 	       shift 2
 	       exit 1
 	       ;;
 	    *)
-               echo "VG FUNCTION NOT YET IMPLEMENTED: EXITING..." >&2
+               MultiLog "VG FUNCTION NOT YET IMPLEMENTED: EXITING..." >&2
 	       shift 2;
                exit 1
 	       ;;
@@ -114,7 +124,7 @@ do
 	 # argument is not found
 	 case "$2" in
 	    "")
-	       echo "Error: option required but not specified"
+	       MultiLog "Error: option required but not specified"
 	       shift 2
 	       exit 1
 	       ;;
@@ -129,7 +139,7 @@ do
          break
          ;;
       *)
-         echo "Internal error!"
+         MultiLog "Internal error!"
          exit 1
          ;;
    esac
@@ -137,4 +147,4 @@ done
 
 CGROUP=${1:-UNDEF}
 
-echo "My options: (flags) ${FSLIST[@]} (unflagged) ${CGROUP}"
+MultiLog "My options: (flags) ${FSLIST[@]} (unflagged) ${CGROUP}"
