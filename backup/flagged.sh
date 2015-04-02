@@ -86,7 +86,39 @@ function FsSpec() {
 # on target filesystems
 #######################################
 function FSfreezeToggle() {
-   MultiLog "OPTION '${1}' NOT YET IMPLEMENTED"
+   ACTION=${1}
+
+   case ${ACTION} in
+      "freeze")
+	 FRZFLAG="-f"
+         ;;
+      "unfreeze")
+	 FRZFLAG="-u"
+         ;;
+      "")	# THIS SHOULD NEVER MATCH
+	 MultiLog "No freeze method specified" >&2
+         ;;
+      *)	# THIS SHOULD NEVER MATCH
+	 MultiLog "Invalid freeze method specified" >&2
+         ;;
+   esac
+
+   if [ ${#FSLIST[@]} -gt 0 ]
+   then
+      local IDX=0
+      while [ ${IDX} -lt ${#FSLIST[@]} ]
+      do
+         MultiLog "Attempting to ${ACTION} '${FSLIST[${IDX}]}'"
+	 fsfreeze ${FRZFLAG} ${FSLIST[${IDX}]}
+	 if [ $? -ne 0 ]
+	 then
+	    MultiLog "${ACTION} on ${FSLIST[${IDX}]} exited abnormally" >&2
+	 fi
+	 IDX=$((${IDX} + 1))
+      done
+   else
+      MultiLog "Nothing filesystems selected for ${ACTION}"
+   fi
 }
 
 
@@ -115,7 +147,7 @@ do
 	 # argument is not found
 	 case "$2" in
 	    "")
-	       MultiLog "Error: option required but not specified"
+	       MultiLog "Error: option required but not specified" >&2
 	       shift 2
 	       exit 1
 	       ;;
