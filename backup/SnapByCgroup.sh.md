@@ -1,5 +1,5 @@
 # Description
-This script is designed to perform consistent backups of a set of EBSes within a specified consistency-group. The script takes one argument - the name of the consistency-group assigned to one or more EBS volumes. The script will then request that all EBSes in the target-set will be snapshotted as close to simultaneously as the AWS tools allow (there may be a few milliseconds seconds delay between start times)
+This script is designed to perform consistent backups of a set of EBSes within a specified consistency-group. The script takes a minimum of one argument - the name of the consistency-group assigned to one or more EBS volumes. Freezing of selected filesystems may be requested by adding -f "&lt;MOUNT_POINT&gt;" to the invocation. The script will then request that all EBSes in the target-set will be snapshotted as close to simultaneously as the AWS tools allow (there may be a few milliseconds seconds delay between start times) and that any optionally-requested filesystems be frozen and unfrozen to accommodate the snaps' data-consistency.
 
 # Dependencies:
 - All EBSes to be backed up as a consistency-group must be tagged:
@@ -9,7 +9,7 @@ This script is designed to perform consistent backups of a set of EBSes within a
 # Usage
 Invoke the script as follows:
 
-&nbsp;&nbsp;&nbsp;SnapByCgroup.sh "&lt;CONSISTENCY_GROUP_NAME&gt;"
+&nbsp;&nbsp;&nbsp;SnapByCgroup.sh -f "&lt;MOUNT_POINT&gt;" "&lt;CONSISTENCY_GROUP_NAME&gt;"
 
 After invocation all members of the EBS-set should show up in the AWS console as having the same snapshot start-time value.
 
