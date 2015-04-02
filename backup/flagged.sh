@@ -31,6 +31,25 @@ OPTIONBUFR=`getopt -o v:f: --long vgname:fsname: -n ${PROGNAME} -- "$@"`
 # Note the quotes around '$OPTIONBUFR': they are essential!
 eval set -- "${OPTIONBUFR}"
 
+function FsSpec() {
+   local FSTYP=$(stat -c %F ${1} 2> /dev/null)
+   local IDX=${#FSLIST[@]}
+
+   case ${FSTYP} in
+      "directory")
+         FSLIST[${IDX}]=${1}
+         ;;
+      "")
+         echo "${1} does not exist. Aborting..." >&2
+         exit 1
+         ;;
+      *)
+         echo "${1} is not a directory. Aborting..." >&2
+         exit 1
+         ;;
+   esac
+}
+
 # Parse our flagged args
 while [ true ]
 do
@@ -46,9 +65,9 @@ do
 	       exit 1
 	       ;;
 	    *)
-	       echo "A VG-name has been specified: '${2}'"
-               ${SCRIPTDIR}/VGsnap.sh "${2}"
+               echo "VG FUNCTION NOT YET IMPLEMENTED: EXITING..." >&2
 	       shift 2;
+               exit 1
 	       ;;
 	 esac
 	 ;;
@@ -63,8 +82,8 @@ do
 	       exit 1
 	       ;;
 	    *) 
-	       echo "A filesystem-name has been specified: '${2}'"
-	       shift 2;
+               FsSpec ${2}
+               shift 2;
 	       ;;
 	 esac
 	 ;;
@@ -78,4 +97,3 @@ do
          ;;
    esac
 done
-
