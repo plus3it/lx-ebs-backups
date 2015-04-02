@@ -117,7 +117,7 @@ function FSfreezeToggle() {
 	 IDX=$((${IDX} + 1))
       done
    else
-      MultiLog "Nothing filesystems selected for ${ACTION}"
+      MultiLog "No filesystems selected for ${ACTION}" >&2
    fi
 }
 
@@ -164,7 +164,7 @@ do
 	 # argument is not found
 	 case "$2" in
 	    "")
-	       MultiLog "Error: option required but not specified"
+	       MultiLog "Error: option required but not specified" >&2
 	       shift 2
 	       exit 1
 	       ;;
@@ -179,20 +179,20 @@ do
          break
          ;;
       *)
-         MultiLog "Internal error!"
+         MultiLog "Internal error!" >&2
          exit 1
          ;;
    esac
 done
 
+# Only after flag-parsing is done, can we set the 
+# var to the unflagged consistency-group variable
 CONGRP=${1:-UNDEF}
 
-# DIAGNOSTIC: REMOVE BEFORE PUSHING UP
-MultiLog "My options: (flags) ${FSLIST[@]} (unflagged) ${CONGRP}"
-
+# Make sure the consistency-group is specified
 if [ "${CONGRP}" = "UNDEF" ]
 then
-   MultiLog "No consistency-group specified. Aborting"
+   MultiLog "No consistency-group specified. Aborting" >&2
    exit 1
 fi
 
@@ -204,7 +204,7 @@ VOLIDS=`aws ec2 describe-volumes --filters \
 
 if [ "${VOLIDS}" = "" ]
 then
-   MultiLog "No volumes found in the requested consistency-group [${CONGRP}]"
+   MultiLog "No volumes found in the requested consistency-group [${CONGRP}]" >&2
 fi
 
 # Freeze any enumerated filesystems
@@ -225,4 +225,5 @@ do
 done
 
 # Unfreeze any enumerated filesystems
+sleep
 FSfreezeToggle unfreeze
