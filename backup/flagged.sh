@@ -59,21 +59,6 @@ function MultiLog() {
    # DEFINE ADDITIONAL OUTPUTS, HERE
 }
 
-###########################################
-# Generate list of related EBS Volume-IDs
-###########################################
-function GetVolumes() {
-   VOLIDS=`aws ec2 describe-volumes --filters \
-      "Name=attachment.instance-id,Values=${THISINSTID}" --filters \
-      "Name=tag:Consistency Group,Values=${BKNAME}"  --query \
-      "Volumes[].Attachments[].VolumeId" --output text`
-
-   if [ "${VOLIDS}" = "" ]
-   then
-      MultiLog "No volumes found in the requested consistency-group [${CONGRP}]"
-   fi
-}
-
 ############################################
 # Create list of filesystems to (un)freeze
 ############################################
@@ -96,30 +81,14 @@ function FsSpec() {
    esac
 }
 
+#######################################
+# Toggle set appropriate freeze-state
+# on target filesystems
+#######################################
 function FSfreezeToggle() {
-   MultiLog "NOT YET IMPLEMENTED"
+   MultiLog "OPTION '${1}' NOT YET IMPLEMENTED"
 }
 
-######################################
-# Perform consistency-group snapshot
-######################################
-function SnapCGroup() {
-   for EBS in ${VOLIDS}
-   do
-      MultiLog "Snapping EBS volume: ${EBS}"
-      # Spawn off backgrounded subshells to reduce start-deltas across snap-set
-      ( \
-         SNAPIT=$(aws ec2 create-snapshot --output=text --description \
-            ${BKNAME} --volume-id ${EBS} --query SnapshotId) ; \
-         aws ec2 create-tags --resource ${SNAPIT} --tags \
-            "Key=Created By,Value=Automated Backup" ; \
-         aws ec2 create-tags --resource ${SNAPIT} --tags \
-            "Key=Name,Value=AutoBack (${THISINSTID}) $(date '+%Y-%m-%d')" ; \
-         aws ec2 create-tags --resource ${SNAPIT} --tags \
-            "Key=Snapshot Group,Value=${DATESTMP} (${THISINSTID})" ; \
-      ) &
-done
-}
 
 
 ######################################
@@ -184,21 +153,44 @@ do
    esac
 done
 
-CGROUP=${1:-UNDEF}
+CONGRP=${1:-UNDEF}
 
-MultiLog "My options: (flags) ${FSLIST[@]} (unflagged) ${CGROUP}"
+# DIAGNOSTIC: REMOVE BEFORE PUSHING UP
+MultiLog "My options: (flags) ${FSLIST[@]} (unflagged) ${CONGRP}"
 
-# Build list of EBSes to snap
-GetVolumes
+if [ "${CONGRP}" = "UNDEF" ]
+then
+   MultiLog "No consistency-group specified. Aborting"
+   exit 1
+fi
 
-# Build list of filesystems to (un)freeze
-FsSpec
+# Generate list of related EBS Volume-IDs
+VOLIDS=`aws ec2 describe-volumes --filters \
+   "Name=attachment.instance-id,Values=${THISINSTID}" --filters \
+   "Name=tag:Consistency Group,Values=${CONGRP}"  --query \
+   "Volumes[].Attachments[].VolumeId" --output text`
 
-# Freeze filesystem-list
+if [ "${VOLIDS}" = "" ]
+then
+   MultiLog "No volumes found in the requested consistency-group [${CONGRP}]"
+fi
+
+# Freeze any enumerated filesystems
 FSfreezeToggle freeze
 
-# Snapshot EBS-list
-SnapCGroup
+# Snapshot volumes
+for EBS in ${VOLIDS}
+do
+   MultiLog "Snapping EBS volume: ${EBS}"
+   # Spawn off backgrounded subshells to reduce start-deltas across snap-set
+   ( \
+      SNAPIT=$(aws ec2 create-snapshot --output=text --description ${BKNAME} \
+        --volume-id ${EBS} --query SnapshotId) ; \
+      aws ec2 create-tags --resource ${SNAPIT} --tags Key="Created By",Value="Automated Backup" ; \
+      aws ec2 create-tags --resource ${SNAPIT} --tags Key="Name",Value="AutoBack (${THISINSTID}) $(date '+%Y-%m-%d')" ; \
+      aws ec2 create-tags --resource ${SNAPIT} --tags Key="Snapshot Group",Value="${DATESTMP} (${THISINSTID})"
+   ) &
+done
 
-# Unfreeze filesystem-list
+# Unfreeze any enumerated filesystems
 FSfreezeToggle unfreeze
