@@ -14,23 +14,45 @@
 #
 ######################################################################
 
+######################################
+##                                  ##
+## Section for variable-declaration ##
+##                                  ##
+######################################
+
+#####################
 # Starter Variables
+#####################
 PATH=/sbin:/usr/sbin:/bin:/usr/bin:/opt/AWScli/bin
 WHEREAMI=`readlink -f ${0}`
 SCRIPTDIR=`dirname ${WHEREAMI}`
 PROGNAME=`basename ${WHEREAMI}`
 
-# Put the bulk of our variables into an external file so they
-# can be easily re-used across scripts
+
+#########################################
+# Put the bulk of our variables into an
+# external file so they can be easily
+# re-used across scripts
+#########################################
 source ${SCRIPTDIR}/commonVars.env
 
-# SCRIPT Variables
-TARGVG=${1:-UNDEF}
-BKNAME="$(hostname -s)_${THISINSTID}-bkup-${DATESTMP}"
-OPTIONBUFR=`getopt -o v:f: --long vgname:fsname: -n ${PROGNAME} -- "$@"`
-# Note the quotes around '$OPTIONBUFR': they are essential!
-eval set -- "${OPTIONBUFR}"
 
+####################
+# SCRIPT Variables
+####################
+BKNAME="$(hostname -s)_${THISINSTID}-bkup-${DATESTMP}"
+
+
+
+######################################
+##                                  ##
+## Section for function-declaration ##
+##                                  ##
+######################################
+
+############################################
+# Create list of filesystems to (un)freeze
+############################################
 function FsSpec() {
    local FSTYP=$(stat -c %F ${1} 2> /dev/null)
    local IDX=${#FSLIST[@]}
@@ -49,6 +71,21 @@ function FsSpec() {
          ;;
    esac
 }
+
+
+######################################
+##                                  ##
+## Section for defining main        ##
+##    program function and flow     ##
+##                                  ##
+######################################
+
+##################
+# Option parsing
+##################
+OPTIONBUFR=`getopt -o v:f: --long vgname:fsname: -n ${PROGNAME} -- "$@"`
+# Note the quotes around '$OPTIONBUFR': they are essential!
+eval set -- "${OPTIONBUFR}"
 
 # Parse our flagged args
 while [ true ]
@@ -97,3 +134,7 @@ do
          ;;
    esac
 done
+
+CGROUP=${1:-UNDEF}
+
+echo "My options: (flags) ${FSLIST[@]} (unflagged) ${CGROUP}"
