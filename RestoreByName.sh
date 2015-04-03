@@ -54,8 +54,7 @@ fi
 
 # Get list of snspshots matching "Name"
 function GetSnapList() {
-   local SNAPLIST=`aws ec2 describe-snapshots --output=text --filter  \
-      "Name=description,Values=*_${THISINSTID}-bkup*" --filters  \
+   local SNAPLIST=`aws ec2 describe-snapshots --output=text --filters  \
       "Name=tag:Created By,Values=Automated Backup" --filters  \
       "Name=tag:Name,Values=${SNAPNAME}" --query  \
       "Snapshots[].SnapshotId"`
