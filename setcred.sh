@@ -5,8 +5,10 @@
 ############################################################
 PATH=/bin:/usr/bin:/opt/AWScli/bin
 
+IAMROLE=Instance-BAR
+
 # Get session auth tokens
-for AWSENV in `curl -s http://169.254.169.254/latest/meta-data/iam/security-credentials/Instance-BnR | sed '{
+for AWSENV in `curl -s http://169.254.169.254/latest/meta-data/iam/security-credentials/${IAMROLE} | sed '{
    s/^.*AccessKeyId" : "/AWS_ACCESS_KEY_ID=/
    s/^.*"SecretAccessKey" : "/AWS_SECRET_ACCESS_KEY=/
    s/^.*"Token" : "/AWS_SESSION_TOKEN=/
