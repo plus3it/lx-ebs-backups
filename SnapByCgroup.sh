@@ -41,7 +41,7 @@ source ${SCRIPTDIR}/commonVars.env
 # SCRIPT Variables
 ####################
 BKNAME="$(hostname -s)_${THISINSTID}-bkup-${DATESTMP}"
-
+FIFO=/tmp/EBSfifo
 
 
 ######################################
@@ -207,6 +207,12 @@ then
    MultiLog "No volumes found in the requested consistency-group [${CONGRP}]" >&2
 fi
 
+# Gonna go old school (who the heck uses named pipes in shell scripts???)
+if [[ ! -p ${FIFO} ]]
+then
+   mkfifo ${FIFO}
+fi
+
 # Freeze any enumerated filesystems
 FSfreezeToggle freeze
 
@@ -215,15 +221,30 @@ for EBS in ${VOLIDS}
 do
    MultiLog "Snapping EBS volume: ${EBS}"
    # Spawn off backgrounded subshells to reduce start-deltas across snap-set
+   # Send our snapshot IDs to a FIFO for later use...
    ( \
-      SNAPIT=$(aws ec2 create-snapshot --output=text --description ${BKNAME} \
-        --volume-id ${EBS} --query SnapshotId) ; \
-      aws ec2 create-tags --resource ${SNAPIT} --tags Key="Created By",Value="Automated Backup" ; \
-      aws ec2 create-tags --resource ${SNAPIT} --tags Key="Name",Value="AutoBack (${THISINSTID}) $(date '+%Y-%m-%d')" ; \
-      aws ec2 create-tags --resource ${SNAPIT} --tags Key="Snapshot Group",Value="${DATESTMP} (${THISINSTID})"
+      aws ec2 create-snapshot --output=text --description ${BKNAME} \
+        --volume-id ${EBS} --query SnapshotId > ${FIFO}
+   ) &
+done
+
+# Read our pipe and apply labels as IDs trickle through the fifo.
+for SNAPID in `cat ${FIFO}`
+do
+   echo "Tagging snapshot: ${SNAPID}"
+   ( \
+   aws ec2 create-tags --resource ${SNAPID} --tags \
+      Key="Created By",Value="Automated Backup" ; \
+   aws ec2 create-tags --resource ${SNAPID} --tags \
+      Key="Name",Value="AutoBack (${THISINSTID}) $(date '+%Y-%m-%d')" ; \
+   aws ec2 create-tags --resource ${SNAPID} --tags \
+      Key="Snapshot Group",Value="${DATESTMP} (${THISINSTID})" ; \
    ) &
 done
 
 # Unfreeze any enumerated filesystems
-sleep
+echo "Unfreezing..."
 FSfreezeToggle unfreeze
+
+# Cleanup on aisle six!
+rm ${FIFO}
