@@ -196,11 +196,18 @@ then
    exit 1
 fi
 
-# Generate list of related EBS Volume-IDs
-VOLIDS=`aws ec2 describe-volumes --filters \
-   "Name=attachment.instance-id,Values=${THISINSTID}" --filters \
-   "Name=tag:Consistency Group,Values=${CONGRP}"  --query \
-   "Volumes[].Attachments[].VolumeId" --output text`
+# Generate list of all EBSes attached to this instance
+ALLVOLIDS=`aws ec2 describe-volumes \
+   --filters "Name=attachment.instance-id,Values=${THISINSTID}" \
+   --query "Volumes[].Attachments[].VolumeId" --output text`
+
+COUNT=0
+for VOLID in ${ALLVOLIDS}
+do
+   VOLIDS[${COUNT}]=$(aws ec2 describe-volumes --volume-id ${VOLID} --filters "Name=tag:Consistency Group,Values=${CONGRP}" --query "Volumes[].Attachments[].VolumeId" --output text)
+   COUNT=$((${COUNT} + 1))
+done
+
 
 if [ "${VOLIDS}" = "" ]
 then
