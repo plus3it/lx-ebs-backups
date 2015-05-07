@@ -45,14 +45,14 @@ function MultiLog() {
 # Get list of snspshots matching "Name"
 function GetSnapList() {
    local SNAPLIST=`aws ec2 describe-snapshots --output=text --filters  \
-      "Name=tag:Created By,Values=Automated Backup" --filters  \
-      "Name=tag:Name,Values=${SNAPNAME}" --query  \
+      "Name=tag:Created By,Values=Automated Backup" \
+      "Name=tag:Snapshot Group,Values=${SNAPGRP}" --query  \
       "Snapshots[].SnapshotId"`
    
    # Make sure our query resulted in a valid match
    if [ "${SNAPLIST}" = "" ]
    then
-      MultiLog "No snapshots found matching pattern \"${SNAPNAME}\". Aborting..." >&2
+      MultiLog "No snapshots found matching pattern \"${SNAPGRP}\". Aborting..." >&2
       exit 1
    else
       echo ${SNAPLIST}
@@ -65,9 +65,16 @@ function SnapToEBS() {
    for SNAPID in ${RESTORELST}
    do
       MultiLog "Creating EBS from snapshot \"${SNAPID}\"... "
-      NEWEBS=$(aws ec2 create-volume --output=text --snapshot-id ${SNAPID} \
-               --volume-type standard --availability-zone ${INSTANCEAZ} \
+      if [ ${EBSTYPE} = "io1" ]
+      then
+         NEWEBS=$(aws ec2 create-volume --output=text --snapshot-id ${SNAPID} \
+               --volume-type ${EBSTYPE} --iops ${IOPS} \
+               --availability-zone ${INSTANCEAZ} --query VolumeId)
+      else
+         NEWEBS=$(aws ec2 create-volume --output=text --snapshot-id ${SNAPID} \
+               --volume-type ${EBSTYPE} --availability-zone ${INSTANCEAZ} \
                --query VolumeId)
+      fi
 
       # If EBS-creation fails, call the error
       if [ "${NEWEBS}" = "" ]
@@ -76,7 +83,7 @@ function SnapToEBS() {
       # Add a meaningful name to the EBS if creation succeeds
       else
 	 aws ec2 create-tags --resource ${NEWEBS} --tags \
-	    "Key=Name,Value=Restore of ${SNAPNAME}"
+	    "Key=Name,Value=Restore of ${SNAPGRP}"
          VOLLIST[${COUNT}]=${NEWEBS}
          local COUNT=$((${COUNT} + 1))
       fi
@@ -167,7 +174,7 @@ function RestoreImport() {
 #######################################
 
 # Make sure a searchable Name was passed
-if [ "$#" -lt 1 ] || [ "${SNAPNAME}" = "UNDEF" ]
+if [ "$#" -lt 1 ] || [ "${SNAPGRP}" = "UNDEF" ]
 then
    MultiLog "Failed to specify required parameters" >&2
    exit 1
@@ -283,17 +290,17 @@ then
    fi
 fi
 
-## # Call snapshot-finder function
-## RESTORELST="$(GetSnapList)"
-## 
-## # Bail if we have an empty list
-## if [ "${RESTORELST}" = "" ]
-## then
-##    MultiLog "No matching-snapshots found for restore" >&2
-##    exit 1
-## else
-##    SnapToEBS
-##    ComputeFreeSlots
-##    EBStoSlot
-##    RestoreImport
-## fi
+# Call snapshot-finder function
+RESTORELST="$(GetSnapList)"
+
+# Bail if we have an empty list
+if [ "${RESTORELST}" = "" ]
+then
+   MultiLog "No matching-snapshots found for restore" >&2
+   exit 1
+else
+   SnapToEBS
+   ComputeFreeSlots
+   EBStoSlot
+   RestoreImport
+fi
