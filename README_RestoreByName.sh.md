@@ -10,7 +10,7 @@ The this script accepts the name of an snapshot "`Name`" attribute and then perf
 # Assumptions/Requirements
 This script assumes that all of the elements of a consistency group share a common "`Snapshot Group`" attribute. While it is expected that the "`Snapshot Group`" attribute's value will be of the form:
 
-&nbsp;&nbsp;&nbsp;YYYYMMDDHHMM (<INSTANCE_ID>)
+&nbsp;&nbsp;&nbsp;YYYYMMDDHHMM (&lt;INSTANCE_ID&gt;)
 
 It is not, however, a hard requirement. This expectation is simply derived from the "`Name`" attribute set by this script's associated backup script(s). Any "`Name`" value will do, so long as:
 - All members of an EBS consistency-group share a common "`Name`" attribute.
