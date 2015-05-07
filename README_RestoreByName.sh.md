@@ -8,9 +8,9 @@ The this script accepts the name of an snapshot "`Name`" attribute and then perf
 
 
 # Assumptions/Requirements
-This script assumes that all of the elements of a consistency group share a common "`Name`" attribute. While it is expected that the "`Name`" attribute's value will be of the form:
+This script assumes that all of the elements of a consistency group share a common "`Snapshot Group`" attribute. While it is expected that the "`Snapshot Group`" attribute's value will be of the form:
 
-&nbsp;&nbsp;&nbsp;AutoBack (<INSTANCE_ID>) YYYY-MM-DD
+&nbsp;&nbsp;&nbsp;YYYYMMDDHHMM (<INSTANCE_ID>)
 
 It is not, however, a hard requirement. This expectation is simply derived from the "`Name`" attribute set by this script's associated backup script(s). Any "`Name`" value will do, so long as:
 - All members of an EBS consistency-group share a common "`Name`" attribute.
@@ -19,6 +19,10 @@ It is not, however, a hard requirement. This expectation is simply derived from 
 # Usage
 To use this script, invoke in a manner similar to:
 
-&nbsp;&nbsp;&nbsp;`RestoreByName.sh "AutoBack (i-57e04da1) 2015-04-01"`
+&nbsp;&nbsp;&nbsp;`RestoreByName.sh -g "201505071621 (i-2dfc97db)"`
+or
+&nbsp;&nbsp;&nbsp;`RestoreByName.sh -g "201505071621 (i-2dfc97db)" -t gp2`
+or
+&nbsp;&nbsp;&nbsp;`RestoreByName.sh -g "201505071621 (i-2dfc97db)" -t io1 -i 600`
 
-The quotations shown above are only required if using "`Name`" attributes that contain spaces or other characters that may break shell-globbing.
+The quotations shown above are only required if using "`Snapshot Group`" attributes that contain spaces or other characters that may break shell-globbing.
