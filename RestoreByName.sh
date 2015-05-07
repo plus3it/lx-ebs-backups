@@ -30,26 +30,17 @@
 PATH=/sbin:/usr/sbin:/bin:/usr/bin:/opt/AWScli/bin
 WHEREAMI=`readlink -f ${0}`
 SCRIPTDIR=`dirname ${WHEREAMI}`
+PROGNAME=`basename ${WHEREAMI}`
 
 # Put the bulk of our variables into an external file so they
 # can be easily re-used across scripts
 source ${SCRIPTDIR}/commonVars.env
-
-# Script-specific variables
-INSTANCEAZ=`curl -s http://169.254.169.254/latest/meta-data/placement/availability-zone/`
 
 # Output log-data to multiple locations
 function MultiLog() {
    echo "${1}"
    logger -p local0.info -t [NamedRestore] "${1}"
 }
-
-# Make sure a searchabel Name was passed
-if [ "$#" -lt 1 ] || [ "${SNAPNAME}" = "UNDEF" ]
-then
-   MultiLog "Failed to specify required parameters" >&2
-   exit 1
-fi
 
 # Get list of snspshots matching "Name"
 function GetSnapList() {
@@ -165,17 +156,43 @@ function RestoreImport() {
    printf "\t/dev/xvdm1 /dev/xvdn1 /dev/xvdo1\n") >&2
 }
 
-# Call snapshot-finder function
-RESTORELST="$(GetSnapList)"
+#############################
+## End of function delares ##
+#############################
 
-# Bail if we have an empty list
-if [ "${RESTORELST}" = "" ]
+#######################################
+##                                   ##
+## Main program functioning and flow ##
+##                                   ##
+#######################################
+
+# Make sure a searchable Name was passed
+if [ "$#" -lt 1 ] || [ "${SNAPNAME}" = "UNDEF" ]
 then
-   MultiLog "No matching-snapshots found for restore" >&2
+   MultiLog "Failed to specify required parameters" >&2
    exit 1
 else
-   SnapToEBS
-   ComputeFreeSlots
-   EBStoSlot
-   RestoreImport
+   INSTANCEAZ=`curl -s http://169.254.169.254/latest/meta-data/placement/availability-zone/`
 fi
+
+####################################
+# Snarf args into parseable buffer
+####################################
+OPTIONBUFR=`getopt -o g:t:i: --long snapgrp:ebstype:iops: -n ${PROGNAME} -- "$@"`
+# Note the quotes around '$OPTIONBUFR': they are essential!
+eval set -- "${OPTIONBUFR}"
+
+## # Call snapshot-finder function
+## RESTORELST="$(GetSnapList)"
+## 
+## # Bail if we have an empty list
+## if [ "${RESTORELST}" = "" ]
+## then
+##    MultiLog "No matching-snapshots found for restore" >&2
+##    exit 1
+## else
+##    SnapToEBS
+##    ComputeFreeSlots
+##    EBStoSlot
+##    RestoreImport
+## fi
