@@ -59,6 +59,20 @@ function MultiLog() {
    # DEFINE ADDITIONAL OUTPUTS, HERE
 }
 
+#################################################
+# Check script invocation-method; set tag-value
+#################################################
+function GetInvocation() {
+   tty -s
+   if [ $? -eq 0 ]
+   then
+      CREATEMETHOD="Manually-Initiated Backup"
+   elif [ $? -eq 1 ]
+   then
+      CREATEMETHOD="Automated Backup"
+   fi
+}
+
 ############################################
 # Create list of filesystems to (un)freeze
 ############################################
@@ -235,13 +249,16 @@ do
    ) &
 done
 
+# Set our "Created By" label
+GetInvocation
+
 # Read our pipe and apply labels as IDs trickle through the fifo.
 for SNAPID in `cat ${FIFO}`
 do
    echo "Tagging snapshot: ${SNAPID}"
    ( \
    aws ec2 create-tags --resource ${SNAPID} --tags \
-      Key="Created By",Value="Automated Backup" ; \
+      Key="Created By",Value="${CREATEMETHOD}" ; \
    aws ec2 create-tags --resource ${SNAPID} --tags \
       Key="Name",Value="AutoBack (${THISINSTID}) $(date '+%Y-%m-%d')" ; \
    aws ec2 create-tags --resource ${SNAPID} --tags \
