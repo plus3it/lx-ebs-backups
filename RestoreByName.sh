@@ -209,14 +209,31 @@ do
 	 # empty parameter will be generated if its optional
 	 # argument is not found
 	 case "$2" in
+	    io1)
+               EBSTYPE=${2}
+	       MultiLog "Info: EBS-type set to \"${EBSTYPE}\"."
+	       shift 2;
+	       ;;
+	    gp2)
+               EBSTYPE=${2}
+	       MultiLog "Info: EBS-type set to \"${EBSTYPE}\"."
+	       shift 2;
+	       ;;
+	    standard)
+               EBSTYPE=${2}
+	       MultiLog "Info: EBS-type set to \"${EBSTYPE}\"."
+	       shift 2;
+	       ;;
 	    "")
 	       MultiLog "Error: option required but not specified" >&2
-	       shift 2
+	       shift 2;
 	       exit 1
 	       ;;
 	    *) 
                EBSTYPE=${2}
+	       MultiLog "Error: Selected EBS-type [${EBSTYPE}] not valid. Aborting!" >&2
                shift 2;
+	       exit 1
 	       ;;
 	 esac
 	 ;;
@@ -227,7 +244,7 @@ do
          case "$2" in
             "")
                MultiLog "Error: option required but not specified" >&2
-               shift 2
+               shift 2;
                exit 1
                ;;
             *)
