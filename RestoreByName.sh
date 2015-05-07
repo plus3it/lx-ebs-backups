@@ -36,10 +36,6 @@ PROGNAME=`basename ${WHEREAMI}`
 # can be easily re-used across scripts
 source ${SCRIPTDIR}/commonVars.env
 
-# Script-specific variables
-INSTANCEAZ=`curl -s http://169.254.169.254/latest/meta-data/placement/availability-zone/`
-
-# Output log-data to multiple locations
 function MultiLog() {
    echo "${1}"
    logger -p local0.info -t [NamedRestore] "${1}"
@@ -230,12 +226,21 @@ do
          shift
          break
          ;;
+      '')
+         MultiLog "No options passed. Aborting!" >&2
+         exit 1
+         ;;
       *)
          MultiLog "Internal error!" >&2
          exit 1
          ;;
    esac
 done
+
+# Script-specific variables
+INSTANCEAZ=`curl -s http://169.254.169.254/latest/meta-data/placement/availability-zone/`
+
+# Output log-data to multiple locations
 
 # Call snapshot-finder function
 RESTORELST="$(GetSnapList)"
