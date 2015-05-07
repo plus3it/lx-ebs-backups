@@ -264,6 +264,25 @@ do
    esac
 done
 
+# Ensure that an IOPS value is set for 'io1' EBS-type
+if [ "${EBSTYPE}" = "io1" ] && [ "${IOPS}" = "" ]
+then
+   MultiLog "Error: EBS-type \"${EBSTYPE}\" selected but no IOPS value specified. Aborting!" >&2
+   exit 1
+elif [ "${EBSTYPE}" = "io1" ] && [ "${IOPS}" != "" ]
+then
+   MultiLog "Info: IOPS value set to \"${IOPS}\"."
+fi
+
+# Let operator know that specifying IOPS not compatible with EBS-type
+if [ "${EBSTYPE}" = "gp2" ] || [ "${EBSTYPE}" = "standard" ]
+then
+   if [ "${IOPS}" != "" ]
+   then
+      MultiLog "Info: specified IOPS but is discarded when EBS-type is \"${EBSTYPE}\"."
+   fi
+fi
+
 ## # Call snapshot-finder function
 ## RESTORELST="$(GetSnapList)"
 ## 
