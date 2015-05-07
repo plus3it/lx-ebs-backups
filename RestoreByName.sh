@@ -182,6 +182,71 @@ OPTIONBUFR=`getopt -o g:t:i: --long snapgrp:ebstype:iops: -n ${PROGNAME} -- "$@"
 # Note the quotes around '$OPTIONBUFR': they are essential!
 eval set -- "${OPTIONBUFR}"
 
+###################################
+# Parse contents of ${OPTIONBUFR}
+###################################
+while [ true ]
+do
+   case "$1" in
+      -g|--snapgrp)
+         # Mandatory argument. Operating in quoted mode: an
+	 # empty parameter will be generated if its optional
+	 # argument is not found
+	 case "$2" in
+	    "")
+	       MultiLog "Error: option required but not specified" >&2
+	       shift 2;
+	       exit 1
+	       ;;
+	    *)
+               SNAPGRP=${2}
+	       shift 2;
+	       ;;
+	 esac
+	 ;;
+      -t|--ebstype)
+         # Mandatory argument. Operating in quoted mode: an
+	 # empty parameter will be generated if its optional
+	 # argument is not found
+	 case "$2" in
+	    "")
+	       MultiLog "Error: option required but not specified" >&2
+	       shift 2
+	       exit 1
+	       ;;
+	    *) 
+               EBSTYPE=${2}
+               shift 2;
+	       ;;
+	 esac
+	 ;;
+      -i|--iops)
+         # Mandatory argument. Operating in quoted mode: an
+         # empty parameter will be generated if its optional
+         # argument is not found
+         case "$2" in
+            "")
+               MultiLog "Error: option required but not specified" >&2
+               shift 2
+               exit 1
+               ;;
+            *)
+               IOPS=${2}
+               shift 2;
+               ;;
+         esac
+         ;;
+      --)
+         shift
+         break
+         ;;
+      *)
+         MultiLog "Internal error!" >&2
+         exit 1
+         ;;
+   esac
+done
+
 ## # Call snapshot-finder function
 ## RESTORELST="$(GetSnapList)"
 ## 
