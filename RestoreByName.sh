@@ -30,14 +30,11 @@
 PATH=/sbin:/usr/sbin:/bin:/usr/bin:/opt/AWScli/bin
 WHEREAMI=`readlink -f ${0}`
 SCRIPTDIR=`dirname ${WHEREAMI}`
+PROGNAME=`basename ${WHEREAMI}`
 
 # Put the bulk of our variables into an external file so they
 # can be easily re-used across scripts
 source ${SCRIPTDIR}/commonVars.env
-
-# Script-specific variables
-SNAPNAME="${1:-UNDEF}"
-INSTANCEAZ=`curl -s http://169.254.169.254/latest/meta-data/placement/availability-zone/`
 
 # Output log-data to multiple locations
 function MultiLog() {
@@ -45,24 +42,17 @@ function MultiLog() {
    logger -p local0.info -t [NamedRestore] "${1}"
 }
 
-# Make sure a searchabel Name was passed
-if [ "${SNAPNAME}" = "UNDEF" ]
-then
-   MultiLog "No snapshot Name provided for query. Aborting" >&2
-   exit 1
-fi
-
 # Get list of snspshots matching "Name"
 function GetSnapList() {
    local SNAPLIST=`aws ec2 describe-snapshots --output=text --filters  \
-      "Name=tag:Created By,Values=Automated Backup" --filters  \
-      "Name=tag:Name,Values=${SNAPNAME}" --query  \
+      "Name=tag:Created By,Values=Automated Backup" \
+      "Name=tag:Snapshot Group,Values=${SNAPGRP}" --query  \
       "Snapshots[].SnapshotId"`
    
    # Make sure our query resulted in a valid match
    if [ "${SNAPLIST}" = "" ]
    then
-      MultiLog "No snapshots found matching pattern \"${SNAPNAME}\". Aborting..." >&2
+      MultiLog "No snapshots found matching pattern \"${SNAPGRP}\". Aborting..." >&2
       exit 1
    else
       echo ${SNAPLIST}
@@ -75,9 +65,16 @@ function SnapToEBS() {
    for SNAPID in ${RESTORELST}
    do
       MultiLog "Creating EBS from snapshot \"${SNAPID}\"... "
-      NEWEBS=$(aws ec2 create-volume --output=text --snapshot-id ${SNAPID} \
-               --volume-type standard --availability-zone ${INSTANCEAZ} \
+      if [ ${EBSTYPE} = "io1" ]
+      then
+         NEWEBS=$(aws ec2 create-volume --output=text --snapshot-id ${SNAPID} \
+               --volume-type ${EBSTYPE} --iops ${IOPS} \
+               --availability-zone ${INSTANCEAZ} --query VolumeId)
+      else
+         NEWEBS=$(aws ec2 create-volume --output=text --snapshot-id ${SNAPID} \
+               --volume-type ${EBSTYPE} --availability-zone ${INSTANCEAZ} \
                --query VolumeId)
+      fi
 
       # If EBS-creation fails, call the error
       if [ "${NEWEBS}" = "" ]
@@ -86,7 +83,7 @@ function SnapToEBS() {
       # Add a meaningful name to the EBS if creation succeeds
       else
 	 aws ec2 create-tags --resource ${NEWEBS} --tags \
-	    "Key=Name,Value=Restore of ${SNAPNAME}"
+	    "Key=Name,Value=Restore of ${SNAPGRP}"
          VOLLIST[${COUNT}]=${NEWEBS}
          local COUNT=$((${COUNT} + 1))
       fi
@@ -165,6 +162,133 @@ function RestoreImport() {
    printf "\tvgimportclone -n OrclVG_Restore -i /dev/xvdf1 /dev/xvdg1 \\ \n"
    printf "\t/dev/xvdm1 /dev/xvdn1 /dev/xvdo1\n") >&2
 }
+
+#############################
+## End of function delares ##
+#############################
+
+#######################################
+##                                   ##
+## Main program functioning and flow ##
+##                                   ##
+#######################################
+
+# Make sure a searchable Name was passed
+if [ "$#" -lt 1 ] || [ "${SNAPGRP}" = "UNDEF" ]
+then
+   MultiLog "Failed to specify required parameters" >&2
+   exit 1
+else
+   INSTANCEAZ=`curl -s http://169.254.169.254/latest/meta-data/placement/availability-zone/`
+fi
+
+####################################
+# Snarf args into parseable buffer
+####################################
+OPTIONBUFR=`getopt -o g:t:i: --long snapgrp:ebstype:iops: -n ${PROGNAME} -- "$@"`
+# Note the quotes around '$OPTIONBUFR': they are essential!
+eval set -- "${OPTIONBUFR}"
+
+###################################
+# Parse contents of ${OPTIONBUFR}
+###################################
+while [ true ]
+do
+   case "$1" in
+      -g|--snapgrp)
+         # Mandatory argument. Operating in quoted mode: an
+	 # empty parameter will be generated if its optional
+	 # argument is not found
+	 case "$2" in
+	    "")
+	       MultiLog "Error: option required but not specified" >&2
+	       shift 2;
+	       exit 1
+	       ;;
+	    *)
+               SNAPGRP=${2}
+	       shift 2;
+	       ;;
+	 esac
+	 ;;
+      -t|--ebstype)
+         # Mandatory argument. Operating in quoted mode: an
+	 # empty parameter will be generated if its optional
+	 # argument is not found
+	 case "$2" in
+	    io1)
+               EBSTYPE=${2}
+	       MultiLog "Info: EBS-type set to \"${EBSTYPE}\"."
+	       shift 2;
+	       ;;
+	    gp2)
+               EBSTYPE=${2}
+	       MultiLog "Info: EBS-type set to \"${EBSTYPE}\"."
+	       shift 2;
+	       ;;
+	    standard)
+               EBSTYPE=${2}
+	       MultiLog "Info: EBS-type set to \"${EBSTYPE}\"."
+	       shift 2;
+	       ;;
+	    "")
+	       MultiLog "Error: option required but not specified" >&2
+	       shift 2;
+	       exit 1
+	       ;;
+	    *) 
+               EBSTYPE=${2}
+	       MultiLog "Error: Selected EBS-type [${EBSTYPE}] not valid. Aborting!" >&2
+               shift 2;
+	       exit 1
+	       ;;
+	 esac
+	 ;;
+      -i|--iops)
+         # Mandatory argument. Operating in quoted mode: an
+         # empty parameter will be generated if its optional
+         # argument is not found
+         case "$2" in
+            "")
+               MultiLog "Error: option required but not specified" >&2
+               shift 2;
+               exit 1
+               ;;
+            *)
+               IOPS=${2}
+               shift 2;
+               ;;
+         esac
+         ;;
+      --)
+         shift
+         break
+         ;;
+      *)
+         MultiLog "Internal error!" >&2
+         exit 1
+         ;;
+   esac
+done
+
+# Ensure that an IOPS value is set for 'io1' EBS-type
+if [ "${EBSTYPE}" = "io1" ] && [ "${IOPS}" = "" ]
+then
+   MultiLog "Error: EBS-type \"${EBSTYPE}\" selected but no IOPS value specified. Aborting!" >&2
+   exit 1
+elif [ "${EBSTYPE}" = "io1" ] && [ "${IOPS}" != "" ]
+then
+   MultiLog "Info: IOPS value set to \"${IOPS}\"."
+fi
+
+# Let operator know that specifying IOPS not compatible with EBS-type
+if [ "${EBSTYPE}" = "gp2" ] || [ "${EBSTYPE}" = "standard" ]
+then
+   if [ "${IOPS}" != "" ]
+   then
+      MultiLog "Info: specified IOPS but is discarded when EBS-type is \"${EBSTYPE}\"."
+   fi
+fi
 
 # Call snapshot-finder function
 RESTORELST="$(GetSnapList)"
