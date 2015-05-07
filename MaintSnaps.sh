@@ -45,7 +45,8 @@ function SnapListToArray() {
    for SNAPID in ${INSTSNAPLIST}
    do
       SNAPLIST[${COUNT}]=$(aws ec2 describe-snapshots --output=text \
-         --snapshot-id ${SNAPID} "Name=tag:Created By,Values=Automated Backup" \
+         --snapshot-id ${SNAPID} \
+         --filter "Name=tag:Created By,Values=Automated Backup" \
          --query \ "Snapshots[].{F1:SnapshotId,F2:StartTime,F3:Description}" \
          | tr '\t' ';')
       local COUNT=$((${COUNT} +1))
