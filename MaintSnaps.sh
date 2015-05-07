@@ -34,6 +34,10 @@ function MultiLog() {
 # * Filter for "Created By" equals "Automated Backup"
 # * Filter for "Description" contains "<INSTANCE_ID>-bkup"
 function SnapListToArray() {
+   local INSTSNAPLIST=$(aws ec2 describe-snapshots --output=text \
+            --filter "Name=description,Values=*_${THISINSTID}-bkup*" \
+            --query "Snapshots[].SnapshotId" | tr '\t' ' ')
+
    local COUNT=0
    for SNAPLIST in `aws ec2 describe-snapshots --output=text --filter \
       "Name=description,Values=*_${THISINSTID}-bkup*" --filters \
