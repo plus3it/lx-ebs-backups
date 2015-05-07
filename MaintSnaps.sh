@@ -34,29 +34,11 @@ function MultiLog() {
 # * Filter for "Created By" equals "Automated Backup"
 # * Filter for "Description" contains "<INSTANCE_ID>-bkup"
 function SnapListToArray() {
-   # Get list of snapshots associated to this instance
-   local INSTSNAPLIST=$(aws ec2 describe-snapshots --output=text \
-            --filter "Name=description,Values=*_${THISINSTID}-bkup*" \
-            --query "Snapshots[].SnapshotId" | tr '\t' ' ')
-
-   # Narrow our list by looking only at "Created By" tag's value
-   # then generate an array of time-parsable elements/attributes
    local COUNT=0
-   for SNAPID in ${INSTSNAPLIST}
-   do
-      SNAPLIST[${COUNT}]=$(aws ec2 describe-snapshots --output=text \
-         --snapshot-id ${SNAPID} \
-         --filter "Name=tag:Created By,Values=Automated Backup" \
-         --query \ "Snapshots[].{F1:SnapshotId,F2:StartTime,F3:Description}" \
-         | tr '\t' ';')
-      local COUNT=$((${COUNT} +1))
-   done
-
-   # Modify time-parsable elements/attributes into more-actionable list
-   # - mostly converting from locale-time to epoch-time
-   # (could probably combine with prior loop to make this more efficient)
-   local COUNT=0
-   for SNAPATTRLIST in ${SNAPLIST}
+   for SNAPLIST in `aws ec2 describe-snapshots --output=text --filters \
+      "Name=description,Values=*_${THISINSTID}-bkup*" \
+      "Name=tag:Created By,Values=Automated Backup" --query \
+      "Snapshots[].{F1:SnapshotId,F2:StartTime,F3:Description}" | tr '\t' ';'`
    do
       local SNAPIDEN=$(echo ${SNAPLIST} | cut -d ";" -f 1)
       local SNAPTIME=$( date -d "`echo ${SNAPLIST} | cut -d ";" -f 2 | sed '{
