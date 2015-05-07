@@ -185,7 +185,7 @@ fi
 ####################################
 # Snarf args into parseable buffer
 ####################################
-OPTIONBUFR=`getopt -o g:t:i: --long snapgrp:ebstype:iops: -n ${PROGNAME} -- "$@"`
+OPTIONBUFR=`getopt -o g:t:i: --longoptions snapgrp:,ebstype:,iops: -n ${PROGNAME} -- "$@"`
 # Note the quotes around '$OPTIONBUFR': they are essential!
 eval set -- "${OPTIONBUFR}"
 
