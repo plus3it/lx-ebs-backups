@@ -30,13 +30,13 @@
 PATH=/sbin:/usr/sbin:/bin:/usr/bin:/opt/AWScli/bin
 WHEREAMI=`readlink -f ${0}`
 SCRIPTDIR=`dirname ${WHEREAMI}`
+PROGNAME=`basename ${WHEREAMI}`
 
 # Put the bulk of our variables into an external file so they
 # can be easily re-used across scripts
 source ${SCRIPTDIR}/commonVars.env
 
 # Script-specific variables
-SNAPNAME="${1:-UNDEF}"
 INSTANCEAZ=`curl -s http://169.254.169.254/latest/meta-data/placement/availability-zone/`
 
 # Output log-data to multiple locations
@@ -45,19 +45,12 @@ function MultiLog() {
    logger -p local0.info -t [NamedRestore] "${1}"
 }
 
-# Make sure a searchabel Name was passed
-if [ "${SNAPNAME}" = "UNDEF" ]
-then
-   MultiLog "No snapshot Name provided for query. Aborting" >&2
-   exit 1
-fi
-
 # Get list of snspshots matching "Name"
 function GetSnapList() {
-   local SNAPLIST=`aws ec2 describe-snapshots --output=text --filters  \
-      "Name=tag:Created By,Values=Automated Backup" --filters  \
-      "Name=tag:Name,Values=${SNAPNAME}" --query  \
-      "Snapshots[].SnapshotId"`
+   local SNAPLIST=$(aws ec2 describe-snapshots --output=text --filters  \
+      "Name=tag:Created By,Values=Automated Backup" \
+      "Name=tag:Name,Values=${SNAPNAME}" \
+      --query "Snapshots[].SnapshotId")
    
    # Make sure our query resulted in a valid match
    if [ "${SNAPLIST}" = "" ]
@@ -165,6 +158,84 @@ function RestoreImport() {
    printf "\tvgimportclone -n OrclVG_Restore -i /dev/xvdf1 /dev/xvdg1 \\ \n"
    printf "\t/dev/xvdm1 /dev/xvdn1 /dev/xvdo1\n") >&2
 }
+
+
+######################################
+##                                  ##
+## Section for defining main        ##
+##    program function and flow     ##
+##                                  ##
+######################################
+
+##################
+# Option parsing
+##################
+OPTIONBUFR=`getopt -o g:ti --long snapgrp:ebstype,iops -n ${PROGNAME} -- "$@"`
+# Note the quotes around '$OPTIONBUFR': they are essential!
+eval set -- "${OPTIONBUFR}"
+
+# Parse our flagged args
+while [ true ]
+do
+   case "$1" in
+      -g|--snapgrp)
+         # Mandatory argument. Operating in quoted mode: an
+         # empty parameter will be generated if its optional
+         # argument is not found
+         case "$2" in
+            "")
+               MultiLog "Error: option required but not specified" >&2
+               shift 2
+               exit 1
+               ;;
+            *)
+               SNAPNAME=${2}
+               shift 2;
+               ;;
+         esac
+         ;;
+      -t|--ebstype)
+         # Mandatory argument. Operating in quoted mode: an
+	 # empty parameter will be generated if its optional
+	 # argument is not found
+	 case "$2" in
+	    "")
+	       MultiLog "Error: option required but not specified" >&2
+	       shift 2
+	       exit 1
+	       ;;
+	    *)
+               VOLTYPE=${2}
+	       shift 2;
+	       ;;
+	 esac
+	 ;;
+      -i|--iops)
+         # Mandatory argument. Operating in quoted mode: an
+	 # empty parameter will be generated if its optional
+	 # argument is not found
+	 case "$2" in
+	    "")
+	       MultiLog "Error: option required but not specified" >&2
+	       shift 2
+	       exit 1
+	       ;;
+	    *) 
+               IOPS=${2}
+               shift 2;
+	       ;;
+	 esac
+	 ;;
+      --)
+         shift
+         break
+         ;;
+      *)
+         MultiLog "Internal error!" >&2
+         exit 1
+         ;;
+   esac
+done
 
 # Call snapshot-finder function
 RESTORELST="$(GetSnapList)"
