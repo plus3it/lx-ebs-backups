@@ -36,7 +36,6 @@ SCRIPTDIR=`dirname ${WHEREAMI}`
 source ${SCRIPTDIR}/commonVars.env
 
 # Script-specific variables
-SNAPNAME="${1:-UNDEF}"
 INSTANCEAZ=`curl -s http://169.254.169.254/latest/meta-data/placement/availability-zone/`
 
 # Output log-data to multiple locations
@@ -46,9 +45,9 @@ function MultiLog() {
 }
 
 # Make sure a searchabel Name was passed
-if [ "${SNAPNAME}" = "UNDEF" ]
+if [ "$#" -lt 1 ] || [ "${SNAPNAME}" = "UNDEF" ]
 then
-   MultiLog "No snapshot Name provided for query. Aborting" >&2
+   MultiLog "Failed to specify required parameters" >&2
    exit 1
 fi
 
