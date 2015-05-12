@@ -223,7 +223,7 @@ do
 done
 
 
-if [ "${VOLIDS}" = "" ]
+if [ "${VOLIDS[@]}" = "" ]
 then
    MultiLog "No volumes found in the requested consistency-group [${CONGRP}]" >&2
 fi
@@ -238,7 +238,7 @@ fi
 FSfreezeToggle freeze
 
 # Snapshot volumes
-for EBS in ${VOLIDS}
+for EBS in ${VOLIDS[@]}
 do
    MultiLog "Snapping EBS volume: ${EBS}"
    # Spawn off backgrounded subshells to reduce start-deltas across snap-set
