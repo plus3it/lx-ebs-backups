@@ -45,7 +45,6 @@ function MultiLog() {
 # Get list of snspshots matching "Name"
 function GetSnapList() {
    local SNAPLIST=`aws ec2 describe-snapshots --output=text --filters  \
-      "Name=tag:Created By,Values=Automated Backup" \
       "Name=tag:Snapshot Group,Values=${SNAPGRP}" --query  \
       "Snapshots[].SnapshotId"`
    
