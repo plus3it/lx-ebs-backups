@@ -300,6 +300,6 @@ then
 else
    SnapToEBS
    ComputeFreeSlots
-   EBStoSlot
-   RestoreImport
+#    EBStoSlot
+#    RestoreImport
 fi
