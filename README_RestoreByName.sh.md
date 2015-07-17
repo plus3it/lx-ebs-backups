@@ -21,11 +21,36 @@ It is not, however, a hard requirement. This expectation is simply derived from 
 To use this script, invoke in a manner similar to:
 
 &nbsp;&nbsp;&nbsp;`RestoreByName.sh -g "201505071621 (i-2dfc97db)"`
+
 or
+
 &nbsp;&nbsp;&nbsp;`RestoreByName.sh -g "201505071621 (i-2dfc97db)" -a us-east-1a`
+
 or
+
 &nbsp;&nbsp;&nbsp;`RestoreByName.sh -g "201505071621 (i-2dfc97db)" -t gp2`
+
 or
+
 &nbsp;&nbsp;&nbsp;`RestoreByName.sh -g "201505071621 (i-2dfc97db)" -t io1 -i 600`
 
 The quotations shown above are only required if using "`Snapshot Group`" attributes that contain spaces or other characters that may break shell-globbing.
+
+# Follow-on Tasks
+Once this script has created the recovery EBS volumes, it will be necessary to attach them to an instance. To primary use-cases are anticipated: file-level and "bare-metal" style restores.
+
+## "Bare-metal" Restore
+"Bare-metal" restores can be done in two main ways: restore-in-place and parallel-restore.
+### Restore-In-Place
+In this scenario, the recovery volumes are recovered to the original, presumably broken instance. Steps for doing so are as follows:
+
+1. Stop - **do not terminate** - the instance to be restored to.
+2. Detach the EBSes(es) that will be replaced.
+3. Attach the recovery-EBS(es) in place of the previously-detached EBS(es).
+4. Restart the instance
+5. Verify that instance starts as expected with the restore EBS(es) in place and verify restore EBS(es) data is in the expected state
+
+This procedure assumes that the recovery-script was used to build the recovery EBS(es) in the same availability-zone as the instance to be restored to.
+### Parallel-Restore
+
+## File-Level Restore
