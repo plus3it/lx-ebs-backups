@@ -31,6 +31,7 @@ PATH=/sbin:/usr/sbin:/bin:/usr/bin:/opt/AWScli/bin
 WHEREAMI=$(readlink -f ${0})
 SCRIPTDIR=$(dirname ${WHEREAMI})
 PROGNAME=$(basename ${WHEREAMI})
+EBSTYPE="standard"
 
 # Put the bulk of our variables into an external file so they
 # can be easily re-used across scripts
@@ -46,7 +47,11 @@ function MultiLog() {
 function VerifyAZ() {
    local AZLIST=$(aws ec2 describe-availability-zones \
       --query "AvailabilityZones[].ZoneName[]" --output text | tr "\t" "\n")
-   echo ${AZLIST} | grep -w "${1}"
+   echo ${AZLIST} | grep -qw "${1}"
+   if [[ $? -eq 0 ]]
+   then
+      echo "${1}"
+   fi
 }
 
 # Get list of snspshots matching "Name"
@@ -71,7 +76,7 @@ function SnapToEBS() {
    for SNAPID in ${RESTORELST}
    do
       MultiLog "Creating EBS from snapshot \"${SNAPID}\"... "
-      if [ ${EBSTYPE} = "io1" ]
+      if [[ ${EBSTYPE} = "io1" ]]
       then
          NEWEBS=$(aws ec2 create-volume --output=text --snapshot-id ${SNAPID} \
                --volume-type ${EBSTYPE} --iops ${IOPS} \
@@ -180,12 +185,13 @@ function RestoreImport() {
 #######################################
 
 # Make sure a searchable Name was passed
-if [ "$#" -lt 1 ] || [ "${SNAPGRP}" = "UNDEF" ]
+if [[ "$#" -lt 1 ]] || [[ "${SNAPGRP}" = "UNDEF" ]]
 then
    MultiLog "Failed to specify required parameters" >&2
    exit 1
 else
-   INSTANCEAZ=`curl -s http://169.254.169.254/latest/meta-data/placement/availability-zone/`
+   INSTANCEAZ=$(curl -s \
+      http://169.254.169.254/latest/meta-data/placement/availability-zone/)
 fi
 
 ####################################
