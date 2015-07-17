@@ -40,7 +40,7 @@ The quotations shown above are only required if using "`Snapshot Group`" attribu
 Once this script has created the recovery EBS volumes, it will be necessary to attach them to an instance. To primary use-cases are anticipated: file-level and "bare-metal" style restores.
 
 ## "Bare-metal" Restore
-"Bare-metal" restores can be done in two main ways: restore-in-place and parallel-restore.
+"Bare-metal" restores are understood to mean any restore scenario where an entire production system's EBS's contents are wholly replaced from a backup copy. A "bare-metal" style restore can be done in two main ways: restore-in-place and parallel-restore.
 ### Restore-In-Place
 In this scenario, the recovery volumes are recovered to the original, presumably broken instance. Steps for doing so are as follows:
 
@@ -52,5 +52,20 @@ In this scenario, the recovery volumes are recovered to the original, presumably
 
 This procedure assumes that the recovery-script was used to build the recovery EBS(es) in the same availability-zone as the instance to be restored to.
 ### Parallel-Restore
+In this scenario, the recovery volumes are recovered to a new instance. It is assumed that both the root EBS(es) and application-data EBS(es) will be restored. Steps for doing so are as follows:
+
+1. Launch a new instance into the same availability-zone that the EBS-recovery was performed to.
+  - If the AMI used for the original instance is still available, use the "Launch More Like This" option from the AWS console to launch the replacement-instance
+  - If the AMI used for the original instance is no longer available, launch a new, equivalent instance - ensuring to set all of the requisite IAM, security group, VPC options, etc. that were applied to the original instance. Do not attach any additional disks to the new instance as they will be discarded.
+2. After the new instance has complete launching (2 of 2 launch tests have succeeded), stop - **do not terminate** - the new instance.
+3. After the new instance has stopped, detach all EBS volumes currently attached to the instance.
+4. Discard the detached EBS volumes.
+5. Attach the EBS recovery volumes to their appropriate locations (e.g., if an EBS was built from a snapshot of an EBS attached at /dev/sda1, attach the recovery EBS at /dev/sda1 of the new instance)
+6. If the original instance is still in a running state, power it down (**do not terminate it**). This is a safety-measure to ensure that things like Active Directory bindings do not create conflicts.
+7. If the original instance had EIPs (etc.) associated to it, re-associate those objects to the replacement instance.
+8. Power on the replacement instance (with the recovery EBSes attached)
+9. Verify that the replacement instance starts up (2 of 2 launch tests have succeeded)
+10. Login to the instance and verify functionality.
+11. Ensure that any external services dependent on the original instance are functioning correctly with the recovery instance.
 
 ## File-Level Restore
