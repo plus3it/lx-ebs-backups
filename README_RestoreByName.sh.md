@@ -1,11 +1,12 @@
 # Functionality
-The this script accepts the name of an snapshot "`Snapshot Group`" attribute and then performs the following actions:
+This script is designed to create EBS volumes from snapshots previously created using the `SnapByCgroup.sh` script. This script takes several arguments:
 
-1. Creates EBS(es) from volume snapshots matching the passed "`Snapshot Group`" attribute. The EBS(es) will be created within the same AWS availability zone (AZ) as the host invoking the script.
-2. Computes a list of free attachment points. This script will determine which of the volume attachment-points (per current AWS limitations, `/dev/sdf` through `/dev/sdz`) are currently occupied, then construct a list of the unused volume attachment-points.
-3. Using the free-slot list generated in the prior list, attach the newly-created EBS(es) to the invoking Linux-based instance. Free slots are attached to from lowest to highest, starting from `/dev/sdf` - or the lowest available slot - until all slots are exhausted. If there are more elements in a consistency-group than there are available free slots, the script will abort.
-4. [FUTURE CAPABILITY] Once the target EBSes are attached to the instance, the script will attempt to import any LVM2 volume groups found on the EBSes.
+- **Snapshot Group**: This argument is *mandatory*. A "snapshot group" is group of one or more snapshots created by the `SnapByCgroup.sh` script. This argument is prepended with either the `-g` or `--snapgrp` commandline switch.
+- **Availability Zone**: This argument is optional. If this argument is not given, the restored EBS volumes will be created within the same AZ as the instance the script is executed from. This argument is prepended with either the `-a` or `--az` commandline switch. Legal values are any availability zones in the same region as the instance the script is run from.
+- **EBS Type**: This argument is optional. If this argument is not given, the restored EBS volumes will be created as (standard) magnetic volumes. This argument is prepended with either the `-t` or `--ebstype` commandline switch. Legal values are `standard`, `gp2` and `io1`
+- **Provisioned IOPs**: This argument is mandatory if the **EBS TYPE** has been selected as `io1`. This argument is prepended with either the `-i` or `--iops` commandline switch. Valid values are restricted to integers and will depend on the size of the volume(s) being restored.
 
+Assuming all mandatory arguments and valid optional arguments have been specified, this script will then create EBS(es) from volume snapshots matching the passed "`Snapshot Group`" attribute. The restored EBS(es) will be standard magnetic volumes unless the **EBS Type** option has been specified and will be created in the invoking host's availability zone unless the **Availability Zone** option has been specified.
 
 # Assumptions/Requirements
 This script assumes that all of the elements of a consistency group share a common "`Snapshot Group`" attribute. While it is expected that the "`Snapshot Group`" attribute's value will be of the form:
@@ -20,6 +21,8 @@ It is not, however, a hard requirement. This expectation is simply derived from 
 To use this script, invoke in a manner similar to:
 
 &nbsp;&nbsp;&nbsp;`RestoreByName.sh -g "201505071621 (i-2dfc97db)"`
+or
+&nbsp;&nbsp;&nbsp;`RestoreByName.sh -g "201505071621 (i-2dfc97db)" -a us-east-1a`
 or
 &nbsp;&nbsp;&nbsp;`RestoreByName.sh -g "201505071621 (i-2dfc97db)" -t gp2`
 or
