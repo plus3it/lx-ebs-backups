@@ -9,6 +9,8 @@ This script is designed to create EBS volumes from snapshots previously created 
 Assuming all mandatory arguments and valid optional arguments have been specified, this script will then create EBS(es) from volume snapshots matching the passed "`Snapshot Group`" attribute. The restored EBS(es) will be standard magnetic volumes unless the **EBS Type** option has been specified and will be created in the invoking host's availability zone unless the **Availability Zone** option has been specified.
 
 # Assumptions/Requirements
+## AWS Permissions
+## Tagging/Labeling
 This script assumes that all of the elements of a consistency group share a common "`Snapshot Group`" attribute. While it is expected that the "`Snapshot Group`" attribute's value will be of the form:
 
 &nbsp;&nbsp;&nbsp;YYYYMMDDHHMM (&lt;INSTANCE_ID&gt;)
@@ -16,6 +18,8 @@ This script assumes that all of the elements of a consistency group share a comm
 It is not, however, a hard requirement. This expectation is simply derived from the "`Snapshot Group`" attribute set by this script's associated backup script(s). Any "`Snapshot Group`" value will do, so long as:
 - All members of an EBS consistency-group share a common "`Snapshot Group`" attribute.
 - All "`Snapshot Group`" attributes are unique across snapshot-groups within an AWS region
+
+## Instance Configuration Items
 
 # Usage
 To use this script, invoke in a manner similar to:
