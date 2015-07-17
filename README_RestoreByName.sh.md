@@ -79,3 +79,22 @@ In this scenario, the recovery volumes are recovered to a new instance. It is as
 11. Ensure that any external services dependent on the original instance are functioning correctly with the recovery instance.
 
 ## File-Level Restore
+### Off-host
+This scenario is used to construct a restorable-archive of files on a temporary "restore host". This is method is used to ensure no conflicts (e.g., LVM2 volume-group object collisions) can occur when mounting EBSes for restore purposes.
+
+1. Launch a small EC2 instance - reccommend using an Amazon Linux AMI and a t1.micro or t2.micro (or next-smallest available instance-type) - in the same availability-zone the recovery EBSes were created into.
+2. Attach the recovery EBSes to the instance launched in the prior step
+3. Login to the launched instance (if using an Amazon Linux instance, do a key-based login to the "ec2-user" account).
+4. Escalate privileges using `sudo`
+5. Perform a `vgscan` to make the instance looke for any LVM2 objects available on the recovery instances
+6. Perform a `vgdisplay -s` to get a list of LVM2 volume groups (if using an Amazon Linux instance for recovery, the only VM2 volume groups will be those hosted on the recovery EBSes)
+7. For each LVM2 volume group returned in the prior step, execute `vgchange -a y <VOLGRPNAME>`
+8. Use the `lvs` command to show a list of logical volumes available after the `vgchange` operation completes.
+9. If no LVM2 objects are present on the recovery EBS(es), use `fdisk -lu | awk '/Linux$/{print $1}'` to get a list of partitions available for mounting (note: ignore /dev/xvda or any other root-devices the instance is using)
+10. Mount the recoverable LVM2- or bare disk-based to a recovery location (recommend something under `/mnt`)
+11. Construct a list of files to restore, then create a transferable archive (e.g., `cd /mnt ; find appdata -print | cpio -ov > restore_files.cpio`)
+12. Transfer the restore-archive to the instance requiring file-level restores
+13. Dearchive the restore-archive (e.g., `cd /PARENT/PATH/OF/appdata ; cpio idv < restore_files.cpio`)
+ 
+### Same-host
+(to be written)
