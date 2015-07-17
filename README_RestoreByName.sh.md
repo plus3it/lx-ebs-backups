@@ -10,6 +10,7 @@ Assuming all mandatory arguments and valid optional arguments have been specifie
 
 # Assumptions/Requirements
 ## AWS Permissions
+The permissions specified in the [permissions README](README_AWSpermissions.md) are the aggregated permissions-set required to allow *all* of the scripts in this project to function. If your operating environment splits resposibilies for snapshot-setup and snapshot-restore operations, it is likely that you will have delegated different permissiosn sets to the groups responsible for each of those tasks. To do a restore, an administrator will need *all* of the permissions defined in the permissions README.
 ## Tagging/Labeling
 This script assumes that all of the elements of a consistency group share a common "`Snapshot Group`" attribute. While it is expected that the "`Snapshot Group`" attribute's value will be of the form:
 
@@ -20,6 +21,11 @@ It is not, however, a hard requirement. This expectation is simply derived from 
 - All "`Snapshot Group`" attributes are unique across snapshot-groups within an AWS region
 
 ## Instance Configuration Items
+If performing a full-recovery restore-scenario, it is possible that centalized authentication functions may not be functional. If centralized authentication isn't functioning, it will be critical that the snapshot source-instance have been configured to allow logins from a local "maintenance" account.
+
+It is generally assumed that SSH key-based logins will be used for this. However, if key-based logins are explicitly disabled within - or the launch-key's password is unkown - it will be necessary to do password-based login to the "maintenance" account. In either key-based or password-based login scenarios, the recovery-administrator will need to know the password necesary to provide access.
+
+Note: Depending on the presence of the cloud-init package and its subsequent configuration within the backed-up instance, a usable, key-based maintenance account will be created when the recovered instance starts from the recovery-EBSes.
 
 # Usage
 To use this script, invoke in a manner similar to:
