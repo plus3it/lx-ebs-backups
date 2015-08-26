@@ -123,7 +123,7 @@ function FSfreezeToggle() {
       while [ ${IDX} -lt ${#FSLIST[@]} ]
       do
          MultiLog "Attempting to ${ACTION} '${FSLIST[${IDX}]}'"
-	 fsfreeze ${FRZFLAG} ${FSLIST[${IDX}]}
+	 fsfreeze ${FRZFLAG} "${FSLIST[${IDX}]}"
 	 if [ $? -ne 0 ]
 	 then
 	    MultiLog "${ACTION} on ${FSLIST[${IDX}]} exited abnormally" >&2
@@ -183,7 +183,7 @@ do
 	       exit 1
 	       ;;
 	    *) 
-               FsSpec ${2}
+               FsSpec "${2}"
                shift 2;
 	       ;;
 	 esac
