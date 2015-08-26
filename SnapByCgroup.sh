@@ -77,7 +77,7 @@ function GetInvocation() {
 # Create list of filesystems to (un)freeze
 ############################################
 function FsSpec() {
-   local FSTYP=$(stat -c %F ${1} 2> /dev/null)
+   local FSTYP=$(stat -c %F "${1}" 2> /dev/null)
    local IDX=${#FSLIST[@]}
 
    case ${FSTYP} in
@@ -223,7 +223,7 @@ do
 done
 
 
-if [ "${VOLIDS[@]}" = "" ]
+if [[ "${VOLIDS[@]}" = "" ]]
 then
    MultiLog "No volumes found in the requested consistency-group [${CONGRP}]" >&2
 fi
