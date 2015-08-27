@@ -35,19 +35,22 @@ tmpfs                 498M     0  498M   0% /tmp
 
 ###Procedure
 1. Tag the EBS volumes to snap following the directions [here](README_SnapByCgroup.sh.md) . In our example we added the following tag and value to both EBS volumes:
-```bash
+
+  ```bash
 key = Consistency Group #this is a required value, don't modify it
 value = MyGroup01 #name this whatever you want, whatever volumes share this value will be snapped together
-```
+  ```
 
 2. Retrieve the SnapByCgroup.sh script 
-```
+
+  ```
 cd /root
 git clone <url to git repo for LxEBSbackups>
-```
+  ```
 
 3. Test the script
-```
+
+  ```
 /root/LxEBSbackups/SnapByCgroup.sh -f /mnt/data MyGroup01
 Attempting to freeze '/mnt/data/'
 Snapping EBS volume: vol-55555555
@@ -56,16 +59,19 @@ Tagging snapshot: snap-55555557
 Tagging snapshot: snap-55555558
 Unfreezing...
 Attempting to unfreeze '/mnt/data/'
-```
+  ```
 
 4. Create a CRON job to create snapshots nightly at 1 AM
-```
+
+  ```
 crontab -e
-```
+  ```
+  
 Add this line:
-```
+
+  ```
 0 01 * * * /root/LxEBSbackups/SnapByCgroup.sh -f /mnt/data MyGroup01
-```
+  ```
 
 ###Result
 Looking in the AWS web console under EC2>Snapshots, you should now see a new snapshot for each EBS disk in the consistency group.  In this case:
@@ -93,19 +99,23 @@ But what if I have snapshots I created manually that I don't want deleted?  No p
 1. Set the how many days you want to retain snapshots in the [commonVars.env](README_commonVars.env.md) file.
 
 2. Test the script
-```
+
+  ```
 /root/LxEBSbackups/MaintSnaps.sh
 Beginning stale snapshot cleanup (killing files older than 2015/08/19 @ 18:25)
-```
+  ```
 
 4. Create a CRON job to delete old snapshots nightly at 5 AM
-```
+
+  ```
 crontab -e
-```
+  ```
+  
 Add this line:
-```
+
+  ```
 0 05 * * * /root/LxEBSbackups/MaintSnaps.sh
-```
+  ```
 
 ###Result
 IF there were any snapshots created by SnapByCgroup.sh run via CRON older than the number of days you set in step 1, then they should now be gone under EC2>Snapshots.  Every morning at 5 AM, older snaps will be deleted.
