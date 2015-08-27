@@ -67,7 +67,7 @@ Attempting to unfreeze '/mnt/data/'
 crontab -e
   ```
   
-Add this line:
+  Add this line:
 
   ```
 0 01 * * * /root/LxEBSbackups/SnapByCgroup.sh -f /mnt/data MyGroup01
@@ -111,7 +111,7 @@ Beginning stale snapshot cleanup (killing files older than 2015/08/19 @ 18:25)
 crontab -e
   ```
   
-Add this line:
+  Add this line:
 
   ```
 0 05 * * * /root/LxEBSbackups/MaintSnaps.sh
