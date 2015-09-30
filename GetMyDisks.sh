@@ -11,9 +11,22 @@ INSTANCID=$(echo ${MDDOCINFO} | jq -r .instanceId)
 AWSREGION=$(echo ${MDDOCINFO} | jq -r .region)
 AWSAVAILZ=$(echo ${MDDOCINFO} | jq -r .availabilityZone)
 
+# Color-formatting flags
 RED='\033[0;31m'
 NC='\033[0m'
 
+if [[ $(test -r /proc/cmdline)$? ]]
+then
+   if [[ $(grep "xen_blkfront.sda_is_xvda=1" /proc/cmdline)$? ]]
+   then
+      echo "Root-dev should be /dev/xvda"
+   else
+      echo "Reported block devices may not be accurate"
+   fi
+fi
+   
+
+# Grab instance's disks and stuff them into an array
 IFS=$'\n'
 MYDISKS=($(
    aws --region ${AWSREGION} ec2 describe-volumes --filters \
@@ -23,12 +36,16 @@ MYDISKS=($(
         ))
 unset IFS
 
-printf "%s\t%s\t%s\n" "Size (GiB)" Volume-ID Volume-Type
+printf "%s\t%s\t%s\t%s\n" "Size (GiB)" Volume-ID Volume-Type Block-Device
 
 LOOP=0
 while [[ ${LOOP} -lt ${#MYDISKS[@]} ]]
 do
-   DISKINFO=${MYDISKS[${LOOP}]}
-   printf "%10s\t${RED}%s${NC}\t%s\n" ${DISKINFO}
+   DISKINFO=(${MYDISKS[${LOOP}]})
+   BLOCKDEV=$(aws --region ${AWSREGION} ec2 describe-volumes \
+              --volume-id ${DISKINFO[1]} \
+              --query "Volumes[].Attachments[].Device[]" \
+              --out text)
+   printf "%10s\t${RED}%s${NC}\t%s\t%s\n" ${DISKINFO[@]} ${BLOCKDEV}
    ((LOOP+=1))
 done
