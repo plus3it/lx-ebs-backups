@@ -7,9 +7,19 @@
 MDHOST="169.254.169.254"
 MDDOCPATH="latest/dynamic/instance-identity/document"
 MDDOCINFO=$(curl -s http://${MDHOST}/${MDDOCPATH}/)
-INSTANCID=$(echo ${MDDOCINFO} | jq -r .instanceId)
-AWSREGION=$(echo ${MDDOCINFO} | jq -r .region)
-AWSAVAILZ=$(echo ${MDDOCINFO} | jq -r .availabilityZone)
+if [[ -x /usr/bin/jq ]]
+then
+   INSTANCID=$(echo ${MDDOCINFO} | jq -r .instanceId)
+   AWSREGION=$(echo ${MDDOCINFO} | jq -r .region)
+   AWSAVAILZ=$(echo ${MDDOCINFO} | jq -r .availabilityZone)
+else
+   INSTANCID=$(echo ${MDDOCINFO} | awk '/instanceId/{print $2}' | \
+               sed 's/"//g')
+   AWSREGION=$(echo ${MDDOCINFO} | awk '/region/{print $2}' | \
+               sed 's/"//g')
+   AWSAVAILZ=$(echo ${MDDOCINFO} | awk '/availabilityZone/{print $2}' | \
+               sed 's/"//g')
+fi
 
 # Color-formatting flags
 RED='\033[0;31m'
