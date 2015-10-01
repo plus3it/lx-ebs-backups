@@ -21,9 +21,9 @@ fi
 RED='\033[0;31m'
 NC='\033[0m'
 
-if [[ $(test -r /proc/cmdline)$? ]]
+if [[ $(test -r /proc/cmdline)$? -eq 0 ]]
 then
-   if [[ $(grep "xen_blkfront.sda_is_xvda=1" /proc/cmdline)$? -eq 0 ]]
+   if [[ $(grep -q "xen_blkfront.sda_is_xvda=1" /proc/cmdline)$? -eq 0 ]]
    then
       echo "Root-dev should be /dev/xvda"
    else
