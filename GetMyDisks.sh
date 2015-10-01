@@ -13,12 +13,8 @@ then
    AWSREGION=$(echo ${MDDOCINFO} | jq -r .region)
    AWSAVAILZ=$(echo ${MDDOCINFO} | jq -r .availabilityZone)
 else
-   INSTANCID=$(echo ${MDDOCINFO} | awk '/instanceId/{print $2}' | \
-               sed 's/"//g')
-   AWSREGION=$(echo ${MDDOCINFO} | awk '/region/{print $2}' | \
-               sed 's/"//g')
-   AWSAVAILZ=$(echo ${MDDOCINFO} | awk '/availabilityZone/{print $2}' | \
-               sed 's/"//g')
+   echo "The 'jq' utility is not installed. Aborting..." > /dev/stderr
+   exit 1
 fi
 
 # Color-formatting flags
