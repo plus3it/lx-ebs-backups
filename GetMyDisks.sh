@@ -13,21 +13,17 @@ then
    AWSREGION=$(echo ${MDDOCINFO} | jq -r .region)
    AWSAVAILZ=$(echo ${MDDOCINFO} | jq -r .availabilityZone)
 else
-   INSTANCID=$(echo ${MDDOCINFO} | awk '/instanceId/{print $2}' | \
-               sed 's/"//g')
-   AWSREGION=$(echo ${MDDOCINFO} | awk '/region/{print $2}' | \
-               sed 's/"//g')
-   AWSAVAILZ=$(echo ${MDDOCINFO} | awk '/availabilityZone/{print $2}' | \
-               sed 's/"//g')
+   echo "The 'jq' utility is not installed. Aborting..." > /dev/stderr
+   exit 1
 fi
 
 # Color-formatting flags
 RED='\033[0;31m'
 NC='\033[0m'
 
-if [[ $(test -r /proc/cmdline)$? ]]
+if [[ $(test -r /proc/cmdline)$? -eq 0 ]]
 then
-   if [[ $(grep "xen_blkfront.sda_is_xvda=1" /proc/cmdline)$? -eq 0 ]]
+   if [[ $(grep -q "xen_blkfront.sda_is_xvda=1" /proc/cmdline)$? -eq 0 ]]
    then
       echo "Root-dev should be /dev/xvda"
    else
