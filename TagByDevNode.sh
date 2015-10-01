@@ -3,7 +3,8 @@
 # Apply tags to EBS volumes by mapping from local block devices
 #
 #################################################################
-DEVNODE="${1:-UNDEF}"
+TAGVALU="${1:-UNDEF}"
+DEVNODE="${2:-UNDEF}"
 
 # Get instance metadata and set vars
 MDHOST="169.254.169.254"
@@ -11,9 +12,8 @@ MDDOCPATH="latest/dynamic/instance-identity/document"
 MDDOCINFO=$(curl -s http://${MDHOST}/${MDDOCPATH}/)
 if [[ -x /usr/bin/jq ]]
 then
+   export AWS_DEFAULT_REGION=$(echo ${MDDOCINFO} | jq -r .region)
    INSTANCID=$(echo ${MDDOCINFO} | jq -r .instanceId)
-   AWSREGION=$(echo ${MDDOCINFO} | jq -r .region)
-   AWSAVAILZ=$(echo ${MDDOCINFO} | jq -r .availabilityZone)
 else
    echo "The 'jq' utility is not installed. Aborting..." > /dev/stderr
    exit 1
@@ -27,11 +27,16 @@ function Blk2Xen() {
 }
 
 function GetEBSvol() {
-   local EBSVOLID=$(aws --region ${AWSREGION} ec2 describe-volumes --filters \
+   local EBSVOLID=$(aws ec2 describe-volumes --filters \
                     "Name=attachment.instance-id,Values=${INSTANCID}" \
                     "Name=attachment.device,Values=${EBSDEV}" \
                     --query "Volumes[].VolumeId" --out text)
    printf ${EBSVOLID}
+}
+
+# Apply requested Tag-Value
+function TagVol() {
+   aws --region us-west-1 ec2 create-tags --resources ${EBSVOL} --tag "Key=Consistency Group,Value=${TAGVALU}"
 }
 
 # Verify that a valid block-device was passed
@@ -48,4 +53,12 @@ else
    EBSVOL=$(GetEBSvol ${EBSDEV})
 fi
 
-echo ${EBSVOL}
+# Apply the tag
+printf "Setting 'Consistency Group' tag to \"${TAGVALU}\" on ${EBSVOL}... "
+if [[ $(TagVol "${TAGVALU}" ${EBSVOL})$? -eq 0 ]]
+then
+   echo "Command returned success."
+else
+   echo "Command returned abnormally." > /dev/stderr
+   exit 1
+fi
