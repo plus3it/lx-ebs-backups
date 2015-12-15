@@ -8,7 +8,12 @@
 INSTANCEINFO="http://169.254.169.254/latest/dynamic/instance-identity/document/"
 INSTANCEID=$(curl -sL ${INSTANCEINFO} | awk '/instanceId/{print $3}' | \
              sed -e 's/",$//' -e 's/"//')
+AWS_DEFAULT_REGION=$(curl -sL ${INSTANCEINFO} | \
+                     awk '/region/{print $3}' | \
+                     sed -e 's/",$//' -e 's/"//')
 PVS=/sbin/pvs
+
+export AWS_DEFAULT_REGION
 
 # Check your privilege...
 function AmRoot() {
