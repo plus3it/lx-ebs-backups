@@ -57,8 +57,6 @@ function AddLVM2Map(){
    local EBSMAPARR=("${!1}")
    local LVMMAPARR=("${!2}")
 
-echo ${LVMMAPARR[@]}
-
    local LOOPC=0
    while [[ ${LOOPC} -le ${#LVMMAPARR[@]} ]]
    do
@@ -79,23 +77,30 @@ function TagYerIt(){
    local MAPPING=("${!1}")
 
    local LOOPC=0
-   while [[ ${LOOPC} -le ${#MAPPING[@]} ]]
+   while [[ ${LOOPC} -lt ${#MAPPING[@]} ]]
    do
-      local VOLID=$(echo ${MAPPING[${LOOPC}]} | cut -d ":" -f 1)
+      local EBSID=$(echo ${MAPPING[${LOOPC}]} | cut -d ":" -f 1)
       local DEVNODE=$(echo ${MAPPING[${LOOPC}]} | cut -d ":" -f 2)
       local LVMGRP=$(echo ${MAPPING[${LOOPC}]} | cut -d ":" -f 3)
 
+      # Don't try to set null tags...
       if [ "${LVMGRP}" = "" ]
       then
          LVMGRP="(none)"
       fi
 
-      printf "Tagging EBS Volume ${VOLID}... "
-      aws ec2 create-tags --resources ${VOLID} --tags \
+      # Because some some EBSes declare dev-mappings that end in numbers...
+      local DEVMAP=$(aws ec2 describe-volumes --volume-id=${EBSID} \
+                     --query="Volumes[].Attachments[].Device[]" --out text)
+
+      printf "Tagging EBS Volume ${EBSID}... "
+      aws ec2 create-tags --resources ${EBSID} --tags \
          "Key=Owning Instance,Value=${INSTANCEID}" \
-         "Key=Attachment Point,Value=${DEVNODE}" \
+         "Key=Attachment Point,Value=${DEVMAP}" \
          "Key=LVM Group,Value=${LVMGRP}" \
          && echo "Done." || echo "Failed."
+
+      local LOOPC=$((${LOOPC} + 1))
    done
 }
 
