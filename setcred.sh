@@ -3,7 +3,17 @@
 #
 # Script to fetch authentication tokens using an EC2's IAM instance-role
 ########################################################################
-INSTANCEROLENAME="$( curl -skL http://169.254.169.254/latest/meta-data/iam/security-credentials/ )"
+PROGNAME="$( basename "${0}" )"
+LOGFACIL="user.err"
+DEBUGVAL="${DEBUG:-false}"
+INSTANCEROLENAME="$( curl -skL \
+      http://169.254.169.254/latest/meta-data/iam/security-credentials/
+   )"
+
+# Function-abort hooks
+trap "exit 1" TERM
+export TOP_PID=$$
+
 
 # Miscellaneous output-engine
 function logIt {
@@ -23,7 +33,8 @@ function logIt {
    if [[ ! -z ${ERREXT} ]] && [[ ${ERREXT} -gt 0 ]]
    then
       logger -st "${PROGNAME}" -p ${LOGFACIL} "${LOGSTR}"
-      exit "${ERREXT}"
+      # Since we're non-zero, immediately terminate script
+      kill -s TERM " ${TOP_PID}"
    fi
 }
 
@@ -38,15 +49,15 @@ function ExtractCredElement {
         python -c 'import json,sys; \
           obj=json.load(sys.stdin);print obj["'${CRED_ELEM}'"]'
    else
+      logIt "No credential-element was specified. Aborting... " 1
    fi
 }
 
 if [[ -z ${INSTANCEROLENAME}  ]]
 then
-   echo "Could not detect an attached IAM instance-role"
-   exit 1
+   logIt "Could not detect an attached IAM instance-role" 1
 else
-   echo "Found an attached IAM instance-role [${INSTANCEROLENAME}]"
+   logIt "Found an attached IAM instance-role [${INSTANCEROLENAME}]" 0
    CRED_RETURN=$(
       curl -skL http://169.254.169.254/latest/meta-data/iam/security-credentials/${INSTANCEROLENAME}/
    )
