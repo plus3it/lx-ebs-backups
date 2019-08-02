@@ -17,6 +17,8 @@ PATH=/sbin:/usr/sbin:/bin:/usr/bin:/opt/AWScli/bin
 PROGNAME="$( basename "${BASH_SOURCE[0]}" )"
 PROGDIR="$( dirname "${BASH_SOURCE[0]}" )"
 BACKOFFSECS=$[ ( ${RANDOM} % 300 ) ]
+BKNAME="$(hostname -s)_${THISINSTID}-bkup-${DATESTMP}"
+FIFO=/tmp/EBSfifo
 
 
 #########################################
@@ -27,24 +29,33 @@ BACKOFFSECS=$[ ( ${RANDOM} % 300 ) ]
 source ${PROGDIR}/commonVars.env
 source ${PROGDIR}/setcred.sh
 
+# Print out a basic usage message
+function UsageMsg {
+   (
+      # Special cases
+      if [[ ! -z ${MISSINGARGS+x} ]]
+      then
+         printf "Failed to pass one or more mandatory arguments\n\n"
+      elif [[ ! -z ${EXCLUSIVEARGS+x} ]]
+      then
+         printf "Passed two or more exclusive arguments\n\n"
+      fi
 
-####################
-# SCRIPT Variables
-####################
-BKNAME="$(hostname -s)_${THISINSTID}-bkup-${DATESTMP}"
-FIFO=/tmp/EBSfifo
-
-
-######################################
-##                                  ##
-## Section for function-declaration ##
-##                                  ##
-######################################
-
-
-#################################################
+      echo "Usage: ${0} [GNU long option] [option] ..."
+      echo "  Options:"
+      printf "\t-f <LIST_OF_FILESYSTEMS_TO_FREEZE>  \n"
+      printf "\t-h # print this message  \n"
+      printf "\t-T <MAXIMUM_BACKOFF_TIME>  \n"
+      printf "\t-v <VOLUME_GROUP_NAME>  \n"
+      echo "  GNU long options:"
+      printf "\t--fsname  <LIST_OF_FILESYSTEMS_TO_FREEZE> \n"
+      printf "\t--help # print this message  \n"
+      printf "\t--max-backoff-time <MAXIMUM_BACKOFF_TIME>  \n"
+      printf "\t--vgname <VOLUME_GROUP_NAME>  \n"
+   ) >&2
+   kill -s TERM " ${TOP_PID}"
+}
 # Check script invocation-method; set tag-value
-#################################################
 function GetInvocation {
    tty -s
    if [ $? -eq 0 ]
@@ -56,9 +67,7 @@ function GetInvocation {
    fi
 }
 
-############################################
 # Create list of filesystems to (un)freeze
-############################################
 function FsSpec {
    # Scoped declaration
    local FSTYP
@@ -128,7 +137,7 @@ function FSfreezeToggle {
 ##################
 # Option parsing
 ##################
-OPTIONBUFR="$( getopt -o f:T:v: --long max-backoff-time:,fsname:,vgname: -n ${PROGNAME} -- "$@" )"
+OPTIONBUFR="$( getopt -o f:hT:v: --long fsname:,help,max-backoff-time:,vgname: -n ${PROGNAME} -- "$@" )"
 # Note the quotes around '$OPTIONBUFR': they are essential!
 eval set -- "${OPTIONBUFR}"
 
@@ -136,6 +145,21 @@ eval set -- "${OPTIONBUFR}"
 while [ true ]
 do
    case "$1" in
+      -f|--fsname)
+	 case "$2" in
+	    "")
+	       shift 2
+	       logIt "Error: option required but not specified" 1
+	       ;;
+	    *) 
+               FsSpec "${2}"
+               shift 2;
+	       ;;
+	 esac
+	 ;;
+      -h|--help)
+         UsageMsg
+         ;;
       -T|--max-backoff-time)
          case "$2" in
             "")
@@ -148,18 +172,6 @@ do
                shift 2;
                ;;
          esac
-	 ;;
-      -f|--fsname)
-	 case "$2" in
-	    "")
-	       shift 2
-	       logIt "Error: option required but not specified" 1
-	       ;;
-	    *) 
-               FsSpec "${2}"
-               shift 2;
-	       ;;
-	 esac
 	 ;;
       -v|--vgname)
 	 case "$2" in
