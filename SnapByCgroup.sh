@@ -18,7 +18,9 @@ PROGNAME="$( basename "${BASH_SOURCE[0]}" )"
 PROGDIR="$( dirname "${BASH_SOURCE[0]}" )"
 BACKOFFSECS=$[ ( ${RANDOM} % 300 ) ]
 BKNAME="$(hostname -s)_${THISINSTID}-bkup-${DATESTMP}"
-FIFO=/tmp/EBSfifo
+FIFO="/tmp/.EBSfifo.$( dd if=/dev/urandom | tr -dc 'a-zA-Z0-9' | \
+                       fold -w 10 | head -n 1
+                     )"
 
 
 #########################################
