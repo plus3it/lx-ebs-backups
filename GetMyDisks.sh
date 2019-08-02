@@ -7,14 +7,18 @@
 MDHOST="169.254.169.254"
 MDDOCPATH="latest/dynamic/instance-identity/document"
 MDDOCINFO=$(curl -s http://${MDHOST}/${MDDOCPATH}/)
+
+# Lets force the use of credentials from attached IAM Instance-role
+source setcred.sh
+
+# Pull useful info from meta-data docment
 if [[ -x /usr/bin/jq ]]
 then
    INSTANCID=$(echo ${MDDOCINFO} | jq -r .instanceId)
    AWSREGION=$(echo ${MDDOCINFO} | jq -r .region)
    AWSAVAILZ=$(echo ${MDDOCINFO} | jq -r .availabilityZone)
 else
-   echo "The 'jq' utility is not installed. Aborting..." > /dev/stderr
-   exit 1
+   logIt "The 'jq' utility is not installed. Aborting... " 1
 fi
 
 # Color-formatting flags
@@ -25,7 +29,7 @@ if [[ $(test -r /proc/cmdline)$? -eq 0 ]]
 then
    if [[ $(grep -q "xen_blkfront.sda_is_xvda=1" /proc/cmdline)$? -eq 0 ]]
    then
-      echo "Root-dev should be /dev/xvda"
+      logIt "Root-dev should be /dev/xvda" 0
    else
       printf "${RED}WARNING: Reported block devices may not be accurate${NC}\n"
    fi
