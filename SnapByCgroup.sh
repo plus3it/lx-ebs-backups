@@ -128,7 +128,7 @@ function FSfreezeToggle {
 ##################
 # Option parsing
 ##################
-OPTIONBUFR="$( getopt -o f:v: --long backoff-time:,fsname:,vgname: -n ${PROGNAME} -- "$@" )"
+OPTIONBUFR="$( getopt -o f:T:v: --long max-backoff-time:,fsname:,vgname: -n ${PROGNAME} -- "$@" )"
 # Note the quotes around '$OPTIONBUFR': they are essential!
 eval set -- "${OPTIONBUFR}"
 
@@ -136,7 +136,7 @@ eval set -- "${OPTIONBUFR}"
 while [ true ]
 do
    case "$1" in
-      --backoff-time)
+      -T|--max-backoff-time)
          case "$2" in
             "")
                logIt "Error: option required but not specified" 1
@@ -144,7 +144,7 @@ do
                exit 1
                ;;
             *)
-               BACKOFFSECS="${2}"
+               BACKOFFSECS=$[ ( ${RANDOM} % ${2} ) ]
                shift 2;
                ;;
          esac
