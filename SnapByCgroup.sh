@@ -230,7 +230,7 @@ FSfreezeToggle freeze
 # Snapshot volumes
 for EBS in ${VOLIDS[@]}
 do
-   logIt "Snapping EBS volume: ${EBS}"
+   logIt "Snapping EBS volume: ${EBS}" 0
    # Spawn off backgrounded subshells to reduce start-deltas across snap-set
    # Send our snapshot IDs to a FIFO for later use...
    ( \
@@ -238,14 +238,6 @@ do
         --volume-id ${EBS} --query SnapshotId > ${FIFO}
    ) &
 done
-
-# Ensure FIFO is starting to have entries before attempting any FS unfreezes
-timeout 10 bash -c -- 'while [[ -z $( cat ${FIFO} ) ]]
-   do
-      echo "Waiting for snapshot-IDs to be returned..."
-      sleep 1
-   done' || \
-     echo "FIFO took too long to populate: unfreezing any frozen filesystems"
 
 # Unfreeze any enumerated filesystems
 echo "Unfreezing any previously-frozen filesystems..."
