@@ -3,7 +3,7 @@
 #
 # Script to fetch authentication tokens using an EC2's IAM instance-role
 ########################################################################
-PROGNAME="$( basename "${0}" )"
+PROGNAME="$( basename "${BASH_SOURCE[0]}" )"
 LOGFACIL="user.err"
 DEBUGVAL="${DEBUG:-false}"
 INSTANCEROLENAME="$( curl -skL \
@@ -38,8 +38,8 @@ function logIt {
    fi
 }
 
+# Extract auth-elements from cred-snarf
 function ExtractCredElement {
-
    local CRED_ELEM
    CRED_ELEM="${1}"
 
@@ -53,6 +53,11 @@ function ExtractCredElement {
    fi
 }
 
+# We only ever want this script sourced...
+if [ "$0" = "${BASH_SOURCE}" ]; then
+    logIt "Error: Script must be sourced" 1
+fi
+
 if [[ -z ${INSTANCEROLENAME}  ]]
 then
    logIt "Could not detect an attached IAM instance-role" 1
@@ -65,11 +70,10 @@ fi
 
 if [[ ${CRED_RETURN} =~ Success ]]
 then
-   echo "Snarfed some creds"
+   logIt "Snarfed some creds" 0
    export AWS_ACCESS_KEY_ID=$( ExtractCredElement "AccessKeyId" )
    export AWS_SECRET_ACCESS_KEY=$( ExtractCredElement "SecretAccessKey" )
    export AWS_SESSION_TOKEN=$( echo ${CRED_RETURN} | ExtractCredElement "Token" )
 else
-   echo "Failed to snarf some creds"
-   exit 1
+   logIt "Failed to snarf some creds" 1
 fi
