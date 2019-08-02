@@ -5,15 +5,25 @@
 # information to the volumes' tag-sets
 # 
 #################################################################
-INSTANCEINFO="http://169.254.169.254/latest/dynamic/instance-identity/document/"
-INSTANCEID=$(curl -sL ${INSTANCEINFO} | awk '/instanceId/{print $3}' | \
-             sed -e 's/",$//' -e 's/"//')
-AWS_DEFAULT_REGION=$(curl -sL ${INSTANCEINFO} | \
-                     awk '/region/{print $3}' | \
-                     sed -e 's/",$//' -e 's/"//')
+PROGNAME="$( basename "${BASH_SOURCE[0]}" )"
+PROGDIR="$( dirname "${BASH_SOURCE[0]}" )"
 PVS=/sbin/pvs
+INSTANCEMETADOC="http://169.254.169.254/latest/dynamic/instance-identity/document/"
+INSTANCEMETADAT="$( curl -sL ${INSTANCEMETADOC} )"
+INSTANCEID=$( echo ${INSTANCEMETADAT} | \
+      python -c 'import json,sys; \
+          obj=json.load(sys.stdin);print obj["instanceId"]'
+   )"
+AWS_DEFAULT_REGION="$( echo ${INSTANCEMETADAT} | \
+      python -c 'import json,sys; \
+          obj=json.load(sys.stdin);print obj["region"]'
+   )"
 
+# Export critical values so sub-shells can use them
 export AWS_DEFAULT_REGION
+
+# Lets force the use of credentials from attached IAM Instance-role
+source "${PROGDIR}/setcred.sh"
 
 # Check your privilege...
 function AmRoot() {
