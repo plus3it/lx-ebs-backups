@@ -111,10 +111,11 @@ function FSfreezeToggle {
       while [ ${IDX} -lt ${#FSLIST[@]} ]
       do
          logIt "Attempting to ${ACTION} '${FSLIST[${IDX}]}'" 0
+
 	 fsfreeze ${FRZFLAG} "${FSLIST[${IDX}]}" && \
             logIt "${ACTION} succeeded" 0 || \
 	      logIt "${ACTION} on ${FSLIST[${IDX}]} exited abnormally" 1
-	 fi
+
 	 IDX=$((${IDX} + 1))
       done
    else
