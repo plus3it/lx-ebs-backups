@@ -244,7 +244,7 @@ do
 done
 
 # Unfreeze any enumerated filesystems
-echo "Unfreezing..."
+echo "Unfreezing any previously-frozen filesystems..."
 FSfreezeToggle unfreeze
 
 # Cleanup on aisle six!
