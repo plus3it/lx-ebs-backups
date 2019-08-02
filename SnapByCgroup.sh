@@ -239,6 +239,17 @@ do
    ) &
 done
 
+# Ensure FIFO is starting to have entries before attempting any FS unfreezes
+while [[ -z $( cat ${FIFO} ]]
+do
+   echo "Waiting for snapshot-IDs to be returned..."
+   sleep 1
+done
+
+# Unfreeze any enumerated filesystems
+echo "Unfreezing any previously-frozen filesystems..."
+FSfreezeToggle unfreeze
+
 # Set our "Created By" label
 GetInvocation
 
@@ -246,19 +257,15 @@ GetInvocation
 for SNAPID in $( cat ${FIFO} )
 do
    echo "Tagging snapshot: ${SNAPID}"
-   ( \
-   aws ec2 create-tags --resource ${SNAPID} --tags \
-      Key="Created By",Value="${CREATEMETHOD}" ; \
-   aws ec2 create-tags --resource ${SNAPID} --tags \
-      Key="Name",Value="AutoBack (${THISINSTID}) $(date '+%Y-%m-%d')" ; \
-   aws ec2 create-tags --resource ${SNAPID} --tags \
-      Key="Snapshot Group",Value="${DATESTMP} (${THISINSTID})" ; \
-   ) &
+   timeout 30 bash -c "
+         aws ec2 create-tags --resource ${SNAPID} --tags \
+            'Key=Created By,Value=${CREATEMETHOD}' ; \
+         aws ec2 create-tags --resource ${SNAPID} --tags \
+            'Key=Name,Value=AutoBack ('${THISINSTID}') $(date "+%Y-%m-%d")' ; \
+         aws ec2 create-tags --resource ${SNAPID} --tags \
+            'Key=Snapshot Group,Value=${DATESTMP} (${THISINSTID})' ; \
+      " && echo "Success" || echo "Failed"
 done
-
-# Unfreeze any enumerated filesystems
-echo "Unfreezing any previously-frozen filesystems..."
-FSfreezeToggle unfreeze
 
 # Cleanup on aisle six!
 rm ${FIFO}
