@@ -11,57 +11,19 @@
 #
 #
 #################################################################
-
-######################################
-##                                  ##
-## Section for variable-declaration ##
-##                                  ##
-######################################
-
-#####################
-# Starter Variables
-#####################
 PATH=/sbin:/usr/sbin:/bin:/usr/bin:/opt/AWScli/bin
-WHEREAMI=`readlink -f ${0}`
-SCRIPTDIR=`dirname ${WHEREAMI}`
-PROGNAME=`basename ${WHEREAMI}`
+PROGNAME="$( basename "${BASH_SOURCE[0]}" )"
+PROGDIR="$( dirname "${BASH_SOURCE[0]}" )"
 
 
 #########################################
-# Put the bulk of our variables into an
-# external file so they can be easily
+# Put the bulk of our variables into 
+# sourcable files so they can be easily
 # re-used across scripts
 #########################################
-source ${SCRIPTDIR}/commonVars.env
+source ${PROGDIR}/commonVars.env
+source ${PROGDIR}/setcreds.sh
 
-
-####################
-# SCRIPT Variables
-####################
-
-
-######################################
-##                                  ##
-## Section for function-declaration ##
-##                                  ##
-######################################
-
-#########################################
-# Output log-data to multiple locations
-#########################################
-function MultiLog() {
-   echo "${1}"
-   logger -p local0.info -t [Flagger] "${1}"
-   # DEFINE ADDITIONAL OUTPUTS, HERE
-}
-
-
-######################################
-##                                  ##
-## Section for defining main        ##
-##    program function and flow     ##
-##                                  ##
-######################################
 
 # Generate list of all EBSes attached to this instance
 ALLVOLINFO=$(aws ec2 describe-volumes \
@@ -78,5 +40,3 @@ do
    aws ec2 create-tags --resource ${VOLUME} --tags \
       "Key=Attachment Point,Value=${ATTACH}"
 done
-
-
