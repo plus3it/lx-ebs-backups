@@ -16,6 +16,7 @@
 PATH=/sbin:/usr/sbin:/bin:/usr/bin:/opt/AWScli/bin
 PROGNAME="$( basename "${BASH_SOURCE[0]}" )"
 PROGDIR="$( dirname "${BASH_SOURCE[0]}" )"
+BACKOFFSECS=$[ ( ${RANDOM} % 300 ) ]
 
 
 #########################################
@@ -127,7 +128,7 @@ function FSfreezeToggle {
 ##################
 # Option parsing
 ##################
-OPTIONBUFR="$( getopt -o v:f: --long vgname:fsname: -n ${PROGNAME} -- "$@" )"
+OPTIONBUFR="$( getopt -o f:v: --long backoff-time:fsname:vgname: -n ${PROGNAME} -- "$@" )"
 # Note the quotes around '$OPTIONBUFR': they are essential!
 eval set -- "${OPTIONBUFR}"
 
@@ -135,25 +136,20 @@ eval set -- "${OPTIONBUFR}"
 while [ true ]
 do
    case "$1" in
-      -v|--vgname)
-         # Mandatory argument. Operating in quoted mode: an
-	 # empty parameter will be generated if its optional
-	 # argument is not found
+      --backoff-time)
 	 case "$2" in
 	    "")
 	       shift 2
 	       logIt "Error: option required but not specified" 1
 	       ;;
 	    *)
+               BACKOFFSECS="${2}"
 	       shift 2;
                logIt "VG FUNCTION NOT YET IMPLEMENTED: EXITING..." 1
 	       ;;
 	 esac
 	 ;;
       -f|--fsname)
-         # Mandatory argument. Operating in quoted mode: an
-	 # empty parameter will be generated if its optional
-	 # argument is not found
 	 case "$2" in
 	    "")
 	       shift 2
@@ -162,6 +158,18 @@ do
 	    *) 
                FsSpec "${2}"
                shift 2;
+	       ;;
+	 esac
+	 ;;
+      -v|--vgname)
+	 case "$2" in
+	    "")
+	       shift 2
+	       logIt "Error: option required but not specified" 1
+	       ;;
+	    *)
+	       shift 2;
+               logIt "VG FUNCTION NOT YET IMPLEMENTED: EXITING..." 1
 	       ;;
 	 esac
 	 ;;
@@ -184,6 +192,11 @@ if [ "${CONGRP}" = "UNDEF" ]
 then
    logIt "No consistency-group specified. Aborting" 1
 fi
+
+# Add a semi-random backoff to reduce likelihood of conflicts with other 
+# EC2s' backup-activities
+printf "Taking random-pause for %s seconds... " "${BACKOFFSECS}"
+sleep "${BACKOFFSECS}" && echo "Continuing"
 
 # Generate list of all EBSes attached to this instance
 ALLVOLIDS="$(
