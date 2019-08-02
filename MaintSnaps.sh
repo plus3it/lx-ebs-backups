@@ -38,7 +38,7 @@ function SnapListToArray {
 
    COUNT=0
    for SNAPLIST in $( aws ec2 describe-snapshots --output=text --filters \
-           "Name=description,Values=*_${THISINSTID}-bkup*" \
+           "Name=tag:Name,Values=AutoBack (${THISINSTID})*" \
            "Name=tag:Created By,Values=Automated Backup" --query \
            "Snapshots[].{F1:SnapshotId,F2:StartTime,F3:Description}" | \
          tr '\t' ';'
