@@ -137,17 +137,18 @@ while [ true ]
 do
    case "$1" in
       --backoff-time)
-	 case "$2" in
-	    "")
-	       shift 2
-	       logIt "Error: option required but not specified" 1
-	       ;;
-	    *)
+         case "$2" in
+            "")
+               logIt "Error: option required but not specified" 1
+               shift 2;
+               exit 1
+               ;;
+            *)
                BACKOFFSECS="${2}"
-	       shift 2;
-               logIt "VG FUNCTION NOT YET IMPLEMENTED: EXITING..." 1
-	       ;;
-	 esac
+               shift 2;
+               ;;
+         esac
+         ;;
 	 ;;
       -f|--fsname)
 	 case "$2" in
