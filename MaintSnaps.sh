@@ -29,7 +29,7 @@ source ${PROGDIR}/setcred.sh
 # Grab a filtered list candidate snapshots and dump to an array
 # * Filter for "Created By" equals "Automated Backup"
 # * Filter for "Description" contains "<INSTANCE_ID>-bkup"
-function SnapListToArray() {
+function SnapListToArray {
    local COUNT=0
    for SNAPLIST in `aws ec2 describe-snapshots --output=text --filters \
       "Name=description,Values=*_${THISINSTID}-bkup*" \
@@ -49,7 +49,7 @@ function SnapListToArray() {
    done
 }
 
-function CheckSnapAge(){
+function CheckSnapAge {
    local COUNT=0
 
    logIt "Beginning stale snapshot cleanup (killing files older than ${EXPDATE})" 0
