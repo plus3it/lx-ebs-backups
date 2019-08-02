@@ -1,4 +1,5 @@
-#!/bin/sh
+#!/bin/bash
+# shellcheck disable=SC1090,SC2015,SC2013,SC2236
 #
 # This script is designed to perform consistent backups of
 # - Selected EBS volumes (referenced by volume-id)
@@ -16,7 +17,7 @@
 PATH=/sbin:/usr/sbin:/bin:/usr/bin:/opt/AWScli/bin
 PROGNAME="$( basename "${BASH_SOURCE[0]}" )"
 PROGDIR="$( dirname "${BASH_SOURCE[0]}" )"
-BACKOFFSECS=$[ ( ${RANDOM} % 300 ) ]
+BACKOFFSECS=$(( RANDOM % 300 ))
 BKNAME="$(hostname -s)_${THISINSTID}-bkup-${DATESTMP}"
 FIFO="/tmp/.EBSfifo.$( dd if=/dev/urandom | tr -dc 'a-zA-Z0-9' | \
                        fold -w 10 | head -n 1
@@ -28,8 +29,8 @@ FIFO="/tmp/.EBSfifo.$( dd if=/dev/urandom | tr -dc 'a-zA-Z0-9' | \
 # sourcable files so they can be easily
 # re-used across scripts
 #########################################
-source ${PROGDIR}/commonVars.env
-source ${PROGDIR}/setcred.sh && PROGNAME="$( basename "${BASH_SOURCE[0]}" )"
+source "${PROGDIR}/commonVars.env"
+source "${PROGDIR}/setcred.sh" && PROGNAME="$( basename "${BASH_SOURCE[0]}" )"
 
 # Print out a basic usage message
 function UsageMsg {
@@ -59,14 +60,8 @@ function UsageMsg {
 }
 # Check script invocation-method; set tag-value
 function GetInvocation {
-   tty -s
-   if [ $? -eq 0 ]
-   then
-      CREATEMETHOD="Manually-Initiated Backup"
-   elif [ $? -eq 1 ]
-   then
+   tty -s && CREATEMETHOD="Manually-Initiated Backup" || \
       CREATEMETHOD="Automated Backup"
-   fi
 }
 
 # Create list of filesystems to (un)freeze
@@ -128,7 +123,7 @@ function FSfreezeToggle {
             logIt "${ACTION} succeeded" 0 || \
 	      logIt "${ACTION} on ${FSLIST[${IDX}]} exited abnormally" 1
 
-	 IDX=$((${IDX} + 1))
+	 IDX=$(( IDX + 1 ))
       done
    else
       logIt "No filesystems selected for ${ACTION}" 0
@@ -139,12 +134,15 @@ function FSfreezeToggle {
 ##################
 # Option parsing
 ##################
-OPTIONBUFR="$( getopt -o f:hT:v: --long fsname:,help,max-backoff-time:,vgname: -n ${PROGNAME} -- "$@" )"
+OPTIONBUFR="$(
+      getopt -o f:hT:v: --long fsname:,help,max-backoff-time:,vgname: \
+        -n "${PROGNAME}" -- "$@"
+   )"
 # Note the quotes around '$OPTIONBUFR': they are essential!
 eval set -- "${OPTIONBUFR}"
 
 # Parse our flagged args
-while [ true ]
+while true
 do
    case "$1" in
       -f|--fsname)
@@ -170,7 +168,7 @@ do
                exit 1
                ;;
             *)
-               BACKOFFSECS=$[ ( ${RANDOM} % ${2} ) ]
+               BACKOFFSECS=$(( RANDOM % ${2} ))
                shift 2;
                ;;
          esac
@@ -220,17 +218,21 @@ ALLVOLIDS="$(
    )"
 
 # Check for EBS tagged for named group
-printf "Seeing if any disks match tag [${CONGRP}]."
+printf "Seeing if any disks match tag [%s]." "${CONGRP}"
 COUNT=0
 for VOLID in ${ALLVOLIDS}
 do
-   VOLCHK=$(aws ec2 describe-volumes --volume-id ${VOLID} --filters "Name=tag:Consistency Group,Values=${CONGRP}" --query "Volumes[].Attachments[].VolumeId" --output text)
+   VOLCHK=$(
+         aws ec2 describe-volumes --volume-id "${VOLID}" \
+           --filters "Name=tag:Consistency Group,Values=${CONGRP}" \
+           --query "Volumes[].Attachments[].VolumeId" --output text
+      )
    if [[ ! -z ${VOLCHK} ]]
    then
       VOLIDS[${COUNT}]="${VOLCHK}"
    fi
    printf "."
-   COUNT=$((${COUNT} + 1))
+   COUNT=$(( COUNT + 1 ))
 done
 echo
 
@@ -243,21 +245,21 @@ fi
 # Gonna go old school (who the heck uses named pipes in shell scripts???)
 if [[ ! -p ${FIFO} ]]
 then
-   mkfifo ${FIFO}
+   mkfifo "${FIFO}"
 fi
 
 # Freeze any enumerated filesystems
 FSfreezeToggle freeze
 
 # Snapshot volumes
-for EBS in ${VOLIDS[@]}
+for EBS in "${VOLIDS[@]}"
 do
    logIt "Snapping EBS volume: ${EBS}" 0
    # Spawn off backgrounded subshells to reduce start-deltas across snap-set
    # Send our snapshot IDs to a FIFO for later use...
    ( \
-      aws ec2 create-snapshot --output=text --description ${BKNAME} \
-        --volume-id ${EBS} --query SnapshotId > ${FIFO}
+      aws ec2 create-snapshot --output=text --description "${BKNAME}" \
+        --volume-id "${EBS}" --query SnapshotId > "${FIFO}"
    ) &
 done
 
@@ -269,7 +271,7 @@ FSfreezeToggle unfreeze
 GetInvocation
 
 # Read our pipe and apply labels as IDs trickle through the fifo.
-for SNAPID in $( cat ${FIFO} )
+for SNAPID in $( cat "${FIFO}" )
 do
    echo "Tagging snapshot: ${SNAPID}"
    timeout 30 bash -c "
@@ -283,4 +285,4 @@ do
 done
 
 # Cleanup on aisle six!
-rm ${FIFO}
+rm "${FIFO}" || logIt "Failed to remove ${FIFO}" 1

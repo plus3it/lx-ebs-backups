@@ -1,4 +1,5 @@
-#!/bin/sh
+#!/bin/bash
+# shellcheck disable=SC1090,SC2155,SC2001,SC2207
 #
 # This script is designed to restore an EBS or EBS-group using the 
 # value in the snapshots' "Name" tag:
@@ -28,62 +29,64 @@
 
 # Starter Variables
 PATH=/sbin:/usr/sbin:/bin:/usr/bin:/opt/AWScli/bin
-WHEREAMI=$(readlink -f ${0})
-SCRIPTDIR=$(dirname ${WHEREAMI})
-PROGNAME=$(basename ${WHEREAMI})
+export PROGNAME="$( basename "${BASH_SOURCE[0]}" )"
+export PROGDIR="$( dirname "${BASH_SOURCE[0]}" )"
 EBSTYPE="standard"
 
 # Put the bulk of our variables into an external file so they
 # can be easily re-used across scripts
-source ${SCRIPTDIR}/commonVars.env
+source "${PROGDIR}/commonVars.env"
 
 # Output log-data to multiple locations
 function MultiLog() {
    echo "${1}"
-   logger -p local0.info -t [NamedRestore] "${1}"
+   logger -p local0.info -t "[NamedRestore]" "${1}"
 }
 
 # Verify AZ-validity
 function VerifyAZ() {
-   local AZLIST=$(aws ec2 describe-availability-zones \
+   local AZLIST
+
+   AZLIST=$(aws ec2 describe-availability-zones \
       --query "AvailabilityZones[].ZoneName[]" --output text | tr "\t" "\n")
-   echo ${AZLIST} | grep -qw "${1}"
-   if [[ $? -eq 0 ]]
-   then
-      echo "${1}"
-   fi
+   echo "${AZLIST}" | grep -qw "${1}" && echo "${1}"
 }
 
 # Get list of snspshots matching "Name"
 function GetSnapList() {
-   local SNAPLIST=`aws ec2 describe-snapshots --output=text --filters  \
+   local SNAPLIST
+
+   SNAPLIST=$( aws ec2 describe-snapshots --output=text --filters  \
       "Name=tag:Snapshot Group,Values=${SNAPGRP}" --query  \
-      "Snapshots[].SnapshotId"`
+      "Snapshots[].SnapshotId" )
    
    # Make sure our query resulted in a valid match
-   if [ "${SNAPLIST}" = "" ]
+   if [[ -z ${SNAPLIST} ]]
    then
       MultiLog "No snapshots found matching pattern \"${SNAPGRP}\". Aborting..." >&2
       exit 1
    else
-      echo ${SNAPLIST}
+      echo "${SNAPLIST}"
    fi
 }
 
 # Create EBSes from snaps
 function SnapToEBS() {
-   local COUNT=0
+   local COUNT
+   local CREATEDEBS
+
+   COUNT=0
    for SNAPID in ${RESTORELST}
    do
       MultiLog "Creating EBS from snapshot \"${SNAPID}\"... "
       if [[ ${EBSTYPE} = "io1" ]]
       then
-         NEWEBS=$(aws ec2 create-volume --output=text --snapshot-id ${SNAPID} \
-               --volume-type ${EBSTYPE} --iops ${IOPS} \
-               --availability-zone ${INSTANCEAZ} --query VolumeId)
+         NEWEBS=$(aws ec2 create-volume --output=text --snapshot-id "${SNAPID}" \
+               --volume-type "${EBSTYPE}" --iops "${IOPS}" \
+               --availability-zone "${INSTANCEAZ}" --query VolumeId)
       else
-         NEWEBS=$(aws ec2 create-volume --output=text --snapshot-id ${SNAPID} \
-               --volume-type ${EBSTYPE} --availability-zone ${INSTANCEAZ} \
+         NEWEBS=$(aws ec2 create-volume --output=text --snapshot-id "${SNAPID}" \
+               --volume-type "${EBSTYPE}" --availability-zone "${INSTANCEAZ}" \
                --query VolumeId)
       fi
 
@@ -93,18 +96,21 @@ function SnapToEBS() {
          MultiLog "EBS-creation failed!"
       # Add a meaningful name to the EBS if creation succeeds
       else
-	 aws ec2 create-tags --resource ${NEWEBS} --tags \
+	 aws ec2 create-tags --resource "${NEWEBS}" --tags \
 	    "Key=Name,Value=Restore of ${SNAPGRP}"
-         VOLLIST[${COUNT}]=${NEWEBS}
-         local COUNT=$((${COUNT} + 1))
+         VOLLIST[${COUNT}]="${NEWEBS}"
+         COUNT=$(( COUNT + 1 ))
       fi
    done
-   local CREATEDEBS=$(echo "${VOLLIST[@]}")
+   CREATEDEBS="${VOLLIST[*]}"
    MultiLog "Created EBS(es): ${CREATEDEBS}"
 }
 
 # Compute list of available attachment slots
 function ComputeFreeSlots() {
+   local ALLSLOTS
+   local COUNT
+
    # List of disk slots AWS recommends for Linux instances
    ALLSLOTS=(
       /dev/sdf
@@ -132,36 +138,35 @@ function ComputeFreeSlots() {
 
    # Determine used DeviceName slots to generate list of free slots
    USED=($(aws ec2 describe-instances --output=text --instance-ids \
-      ${THISINSTID} --query \
+      "${THISINSTID}" --query \
       "Reservations[].Instances[].BlockDeviceMappings[].DeviceName"))
 
-   local COUNT=0
+   COUNT=0
    # Prune candidate slot-list
-   while [ ${COUNT} -lt ${#USED[@]} ]
+   while [[ ${COUNT} -lt ${#USED[@]} ]]
    do
-      ALLSLOTS=( $(echo ${ALLSLOTS[@]} | sed 's#'${USED[${COUNT}]}'##'))
-      local COUNT=$((${COUNT} +1))
+      ALLSLOTS=( $( echo "${ALLSLOTS[@]}" | sed "s#${USED[${COUNT}]}##" ) )
+      COUNT=$(( COUNT +1 ))
    done
 }
 
 # Map EBS(es) to free slot(s)
 function EBStoSlot() {
-   if [ ${#VOLLIST[@]} -le ${#ALLSLOTS[@]} ]
+   local COUNT
+      
+   if [[ ${#VOLLIST[@]} -le ${#ALLSLOTS[@]} ]]
    then
-      local COUNT=0
+      COUNT=0
 
       while [ ${COUNT} -lt ${#VOLLIST[@]} ]
       do
          MultiLog "Mapping ${VOLLIST[${COUNT}]} to ${ALLSLOTS[${COUNT}]}"
          aws ec2 attach-volume --output=text \
-             --volume-id ${VOLLIST[${COUNT}]} \
-             --instance-id ${THISINSTID} \
-             --device ${ALLSLOTS[${COUNT}]} > /dev/null 2>&1
-         if [ $? -ne 0 ]
-	 then
-	    MultiLog "Failed to map ${VOLLIST[${COUNT}]} to ${ALLSLOTS[${COUNT}]}" >&2
-	 fi
-         local COUNT=$((${COUNT} + 1))
+             --volume-id "${VOLLIST[${COUNT}]}" \
+             --instance-id "${THISINSTID}" \
+             --device "${ALLSLOTS[${COUNT}]}" > /dev/null 2>&1 || \
+	   MultiLog "Failed to map ${VOLLIST[${COUNT}]} to ${ALLSLOTS[${COUNT}]}" >&2
+         COUNT=$(( COUNT + 1 ))
       done
    fi
 }
@@ -197,14 +202,17 @@ fi
 ####################################
 # Snarf args into parseable buffer
 ####################################
-OPTIONBUFR=`getopt -o g:t:i:a: --longoptions snapgrp:,ebstype:,iops:,az: -n ${PROGNAME} -- "$@"`
+OPTIONBUFR=$(
+      getopt -o g:t:i:a: --longoptions snapgrp:,ebstype:,iops:,az: \
+        -n "${PROGNAME}" -- "$@"
+   )
 # Note the quotes around '$OPTIONBUFR': they are essential!
 eval set -- "${OPTIONBUFR}"
 
 ###################################
 # Parse contents of ${OPTIONBUFR}
 ###################################
-while [ true ]
+while true
 do
    case "$1" in
       -g|--snapgrp)
@@ -283,7 +291,7 @@ do
                exit 1
                ;;
             *)
-               TARGAZ="$(VerifyAZ ${2})"
+               TARGAZ="$( VerifyAZ "${2}" )"
                shift 2;
                if [ "${TARGAZ}" = "" ]
                then

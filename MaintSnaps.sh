@@ -1,4 +1,5 @@
-#!/bin/sh
+#!/bin/bash
+# shellcheck disable=SC1090,SC2155,SC2001,SC2015
 #
 # The purpose of this script is to find all backups associated 
 # with my instance-ID with the intent of expiring any images that
@@ -15,15 +16,14 @@
 #
 ######################################################################
 PATH=/sbin:/usr/sbin:/bin:/usr/bin:/opt/AWScli/bin
-PROGNAME="$( basename "${BASH_SOURCE[0]}" )"
-PROGDIR="$( dirname "${BASH_SOURCE[0]}" )"
-TARGVG=${1:-UNDEF}
+export PROGNAME="$( basename "${BASH_SOURCE[0]}" )"
+export PROGDIR="$( dirname "${BASH_SOURCE[0]}" )"
 TZ=zulu
 
 # Put the bulk of our variables into an external file so they
 # can be easily re-used across scripts
-source ${PROGDIR}/commonVars.env
-source ${PROGDIR}/setcred.sh
+source "${PROGDIR}/commonVars.env"
+source "${PROGDIR}/setcred.sh" && PROGNAME="$( basename "${BASH_SOURCE[0]}" )"
 
 
 # Grab a filtered list candidate snapshots and dump to an array
@@ -44,20 +44,20 @@ function SnapListToArray {
          tr '\t' ';'
       )
    do
-      SNAPIDEN=$(echo ${SNAPLIST} | cut -d ";" -f 1)
+      SNAPIDEN=$(echo "${SNAPLIST}" | cut -d ";" -f 1)
       SNAPTIME=$( date -d "$(
-               echo ${SNAPLIST} | cut -d ";" -f 2 | \
+               echo "${SNAPLIST}" | cut -d ";" -f 2 | \
                sed '{
                   s/\....Z$//
                   s/T/ /
                }'
             )" "+%s"
          )
-      SNAPDESC=$(echo ${SNAPLIST} | cut -d ";" -f 3)
-      SNAPGRUP=$(echo ${SNAPDESC} | sed 's/^.*-bkup-/GROUP_/')
+      SNAPDESC=$(echo "${SNAPLIST}" | cut -d ";" -f 3)
+      SNAPGRUP=$(echo "${SNAPDESC}" | sed 's/^.*-bkup-/GROUP_/')
       FIXLIST="${SNAPIDEN};${SNAPTIME};${SNAPGRUP}"
       SNAPARRAY[${COUNT}]="${FIXLIST}"
-      COUNT=$((${COUNT} +1))
+      COUNT=$(( COUNT + 1 ))
    done
 }
 
@@ -72,15 +72,15 @@ function CheckSnapAge {
    COUNT=0
    while [ ${COUNT} -lt ${#SNAPARRAY[@]} ]
    do
-      SNAPIDEN=`echo ${SNAPARRAY[${COUNT}]} | cut -d ";" -f 1`
-      SNAPTIME=`echo ${SNAPARRAY[${COUNT}]} | cut -d ";" -f 2`
-      SNAPGRUP=`echo ${SNAPARRAY[${COUNT}]} | cut -d ";" -f 3`
+      SNAPIDEN="$( echo "${SNAPARRAY[${COUNT}]}" | cut -d ";" -f 1 )"
+      SNAPTIME="$( echo "${SNAPARRAY[${COUNT}]}" | cut -d ";" -f 2 )"
+      SNAPGRUP="$( echo "${SNAPARRAY[${COUNT}]}" | cut -d ";" -f 3 )"
 
 
-      if [ $((${CURCTIME} - ${SNAPTIME})) -gt $((${CURCTIME} - ${EXPBEYOND})) ]
+      if [ $(( CURCTIME - SNAPTIME )) -gt $(( CURCTIME - EXPBEYOND )) ]
       then
          logIt "${SNAPIDEN} is older than expiry-horizon. Deleteing..." 0
-         aws ec2 delete-snapshot --snapshot-id ${SNAPIDEN} && \
+         aws ec2 delete-snapshot --snapshot-id "${SNAPIDEN}" && \
             logIt "Deleted" 0 || \
               logIt "Delete of snapshot [${SNAPIDEN}] failed" 1
 
@@ -88,7 +88,7 @@ function CheckSnapAge {
          logIt "${SNAPIDEN} (${SNAPGRUP}) is younger than expiry-horizon (keeping)" 0
       fi
 
-      COUNT=$((${COUNT} +1))
+      COUNT=$(( COUNT + 1 ))
    done
 }
 
