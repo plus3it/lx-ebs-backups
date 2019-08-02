@@ -240,7 +240,7 @@ do
 done
 
 # Ensure FIFO is starting to have entries before attempting any FS unfreezes
-while [[ -z $( cat ${FIFO} ]]
+while [[ -z $( cat ${FIFO} ) ]]
 do
    echo "Waiting for snapshot-IDs to be returned..."
    sleep 1
