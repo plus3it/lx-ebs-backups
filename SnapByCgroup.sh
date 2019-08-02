@@ -29,7 +29,7 @@ FIFO="/tmp/.EBSfifo.$( dd if=/dev/urandom | tr -dc 'a-zA-Z0-9' | \
 # re-used across scripts
 #########################################
 source ${PROGDIR}/commonVars.env
-source ${PROGDIR}/setcred.sh
+source ${PROGDIR}/setcred.sh && PROGNAME="$( basename "${BASH_SOURCE[0]}" )"
 
 # Print out a basic usage message
 function UsageMsg {
@@ -219,17 +219,25 @@ ALLVOLIDS="$(
          --query "Volumes[].Attachments[].VolumeId" --output text
    )"
 
+# Check for EBS tagged for named group
+printf "Seeing if any disks match tag [${CONGRP}]."
 COUNT=0
 for VOLID in ${ALLVOLIDS}
 do
-   VOLIDS[${COUNT}]=$(aws ec2 describe-volumes --volume-id ${VOLID} --filters "Name=tag:Consistency Group,Values=${CONGRP}" --query "Volumes[].Attachments[].VolumeId" --output text)
+   VOLCHK=$(aws ec2 describe-volumes --volume-id ${VOLID} --filters "Name=tag:Consistency Group,Values=${CONGRP}" --query "Volumes[].Attachments[].VolumeId" --output text)
+   if [[ ! -z ${VOLCHK} ]]
+   then
+      VOLIDS[${COUNT}]="${VOLCHK}"
+   fi
+   printf "."
    COUNT=$((${COUNT} + 1))
 done
+echo
 
-
-if [[ "${VOLIDS[@]}" = "" ]]
-then
-   logIt "No volumes found in the requested consistency-group [${CONGRP}]" 0
+# Exit if no EBSes found for consistency-group
+if [[ ${#VOLIDS[@]} -eq 0 ]]
+ then
+   logIt "No volumes found in the requested consistency-group [${CONGRP}]" 1
 fi
 
 # Gonna go old school (who the heck uses named pipes in shell scripts???)
