@@ -10,7 +10,7 @@ PROGDIR="$( dirname "${BASH_SOURCE[0]}" )"
 PVS=/sbin/pvs
 INSTANCEMETADOC="http://169.254.169.254/latest/dynamic/instance-identity/document/"
 INSTANCEMETADAT="$( curl -sL ${INSTANCEMETADOC} )"
-INSTANCEID=$( echo ${INSTANCEMETADAT} | \
+INSTANCEID="$( echo ${INSTANCEMETADAT} | \
       python -c 'import json,sys; \
           obj=json.load(sys.stdin);print obj["instanceId"]'
    )"
@@ -26,7 +26,7 @@ export AWS_DEFAULT_REGION
 source "${PROGDIR}/setcred.sh"
 
 # Check your privilege...
-function AmRoot() {
+function AmRoot {
    if [ $(whoami) = "root" ]
    then
       echo "Running with privileges"
@@ -37,50 +37,66 @@ function AmRoot() {
 }
 
 # Got LVM?
-function CkHaveLVM() {
+function CkHaveLVM {
+   local HAVELVM
+
    if [[ $(rpm --quiet -q lvm2)$? -eq 0 ]] && [[ -x ${PVS} ]]
    then
-      local HAVELVM=TRUE
+      HAVELVM=TRUE
    else
-      local HAVELVM=FALSE
+      HAVELVM=FALSE
    fi
 
    echo ${HAVELVM}
 }
 
 # Return list of attached EBS Volume-IDs
-function GetAWSvolIds(){
-   local VOLIDS=($(aws ec2 describe-instances --instance-id=${INSTANCEID}\
-                 --query "Reservations[].Instances[].BlockDeviceMappings[].Ebs[].VolumeId" \
-                 --out text))
+function GetAWSvolIds {
+   local VOLIDS
+   
+   VOLIDS=(
+         $( aws ec2 describe-instances --instance-id=${INSTANCEID} --query \
+              "Reservations[].Instances[].BlockDeviceMappings[].Ebs[].VolumeId" \
+              --out text
+          )
+      )
 
    echo "${VOLIDS[@]}"
 }
 
 # Map attached EBS Volume-ID to sdX device-node
-function MapVolIdToDsk(){
-   local VOLID="${1}"
-   local DEVMAP=$(aws ec2 describe-volumes --volume-id=${VOLID} \
-                  --query="Volumes[].Attachments[].Device[]" --out text | \
-                  sed 's/[0-9]*$//')
+function MapVolIdToDsk {
+   local VOLID
+   local DEVMAP
+   
+   VOLID="${1}"
+   DEVMAP=$( aws ec2 describe-volumes --volume-id=${VOLID} \
+               --query="Volumes[].Attachments[].Device[]" --out text | \
+               sed 's/[0-9]*$//'
+           )
 
    echo "${DEVMAP}"
 }
 
 # Tack on LVM group-associations where appropriate
-function AddLVM2Map(){
-   local EBSMAPARR=("${!1}")
-   local LVMMAPARR=("${!2}")
+function AddLVM2Map {
+   local EBSMAPARR
+   local LOOPC
+   local LVMMAPARR
+   local SRCHTOK
 
-   local LOOPC=0
+   EBSMAPARR=("${!1}")
+   LVMMAPARR=("${!2}")
+
+   LOOPC=0
    while [[ ${LOOPC} -le ${#LVMMAPARR[@]} ]]
    do
-      local SRCHTOK=$(echo ${LVMMAPARR[${LOOPC}]} | cut -d ":" -f 1)
+      SRCHTOK=$(echo ${LVMMAPARR[${LOOPC}]} | cut -d ":" -f 1)
 
       # This bit of ugliness avoids array re-iteration...
       EBSMAPARR=("${EBSMAPARR[@]/${SRCHTOK}/${LVMMAPARR[${LOOPC}]}}")
 
-      local LOOPC=$((${LOOPC} + 1))
+      LOOPC=$((${LOOPC} + 1))
    done
 
 
@@ -88,15 +104,24 @@ function AddLVM2Map(){
 }
 
 # Tag-up the EBSes
-function TagYerIt(){
-   local MAPPING=("${!1}")
+function TagYerIt {
+   # Initialize as local
+   local LOOPC
+   local MAPPING
+   local EBSID
+   local DEVNODE
+   local LVMGRP
+   local DEVMAP
 
-   local LOOPC=0
+   LOOPC=0
+   MAPPING=("${!1}")
+
+   # Iterate over mapping-list...
    while [[ ${LOOPC} -lt ${#MAPPING[@]} ]]
    do
-      local EBSID=$(echo ${MAPPING[${LOOPC}]} | cut -d ":" -f 1)
-      local DEVNODE=$(echo ${MAPPING[${LOOPC}]} | cut -d ":" -f 2)
-      local LVMGRP=$(echo ${MAPPING[${LOOPC}]} | cut -d ":" -f 3)
+      EBSID=$(echo ${MAPPING[${LOOPC}]} | cut -d ":" -f 1)
+      DEVNODE=$(echo ${MAPPING[${LOOPC}]} | cut -d ":" -f 2)
+      LVMGRP=$(echo ${MAPPING[${LOOPC}]} | cut -d ":" -f 3)
 
       # Don't try to set null tags...
       if [ "${LVMGRP}" = "" ]
@@ -105,8 +130,8 @@ function TagYerIt(){
       fi
 
       # Because some some EBSes declare dev-mappings that end in numbers...
-      local DEVMAP=$(aws ec2 describe-volumes --volume-id=${EBSID} \
-                     --query="Volumes[].Attachments[].Device[]" --out text)
+      DEVMAP=$( aws ec2 describe-volumes --volume-id=${EBSID} \
+         --query="Volumes[].Attachments[].Device[]" --out text )
 
       printf "Tagging EBS Volume ${EBSID}... "
       aws ec2 create-tags --resources ${EBSID} --tags \
@@ -115,7 +140,7 @@ function TagYerIt(){
          "Key=LVM Group,Value=${LVMGRP}" \
          && echo "Done." || echo "Failed."
 
-      local LOOPC=$((${LOOPC} + 1))
+      LOOPC=$((${LOOPC} + 1))
    done
 }
 
