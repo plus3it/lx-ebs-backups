@@ -4,12 +4,14 @@
 # in a formatted list.
 #
 #################################################################
+PROGNAME="$( basename "${BASH_SOURCE[0]}" )"
+PROGDIR="$( dirname "${BASH_SOURCE[0]}" )"
 MDHOST="169.254.169.254"
 MDDOCPATH="latest/dynamic/instance-identity/document"
 MDDOCINFO=$(curl -s http://${MDHOST}/${MDDOCPATH}/)
 
 # Lets force the use of credentials from attached IAM Instance-role
-source setcred.sh
+source "${PROGDIR}/setcred.sh"
 
 # Pull useful info from meta-data docment
 if [[ -x /usr/bin/jq ]]
