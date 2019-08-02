@@ -1,13 +1,21 @@
-language: python
-
-python:
- - "2.6"
- - "2.7"
- - "3.3"
- - "3.4"
+language: bash
 
 sudo: false
 
 install: true
 
 script: true
+
+
+env:
+  global:
+    - FIND_SH="find $TRAVIS_BUILD_DIR -name '*.sh' -type f -print0"
+    - FIND_JSON="find $TRAVIS_BUILD_DIR -name '*.json' -type f -print0"
+    - XARGS="xargs -0 -n1 -I {} -t"
+
+jobs:
+  include:
+    - stage: test
+      name: Shell Script Syntax Verification
+      script: eval $FIND_SH | $XARGS shellcheck {}
+
