@@ -29,10 +29,9 @@ source "${PROGDIR}/setcred.sh"
 function AmRoot {
    if [ $(whoami) = "root" ]
    then
-      echo "Running with privileges"
+      logIt "Running with privileges" 0
    else
-      echo "Insufficient privileges. Aborting..." > /dev/stderr
-      exit 1
+      logIt "Insufficient privileges. Aborting..." 1
    fi
 }
 
