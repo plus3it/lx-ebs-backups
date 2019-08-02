@@ -14,20 +14,16 @@
 # - This script released under the Apache 2.0 OSS License
 #
 ######################################################################
-WHEREAMI=`readlink -f ${0}`
-SCRIPTDIR=`dirname ${WHEREAMI}`
+PATH=/sbin:/usr/sbin:/bin:/usr/bin:/opt/AWScli/bin
+PROGNAME="$( basename "${BASH_SOURCE[0]}" )"
+PROGDIR="$( dirname "${BASH_SOURCE[0]}" )"
 TARGVG=${1:-UNDEF}
 TZ=zulu
 
 # Put the bulk of our variables into an external file so they
 # can be easily re-used across scripts
-source ${SCRIPTDIR}/commonVars.env
-
-# Output log-data to multiple locations
-function MultiLog() {
-   echo "${1}"
-   logger -p local0.info -t [SnapMaint] "${1}"
-}
+source ${PROGDIR}/commonVars.env
+source ${PROGDIR}/setcred.sh
 
 
 # Grab a filtered list candidate snapshots and dump to an array
@@ -56,7 +52,7 @@ function SnapListToArray() {
 function CheckSnapAge(){
    local COUNT=0
 
-   MultiLog "Beginning stale snapshot cleanup (killing files older than ${EXPDATE})"
+   logIt "Beginning stale snapshot cleanup (killing files older than ${EXPDATE})" 0
 
    while [ ${COUNT} -lt ${#SNAPARRAY[@]} ]
    do
@@ -67,16 +63,16 @@ function CheckSnapAge(){
 
       if [ $((${CURCTIME} - ${SNAPTIME})) -gt $((${CURCTIME} - ${EXPBEYOND})) ]
       then
-         MultiLog "${SNAPIDEN} is older than expiry-horizon. Deleteing..."
+         logIt "${SNAPIDEN} is older than expiry-horizon. Deleteing..." 0
          aws ec2 delete-snapshot --snapshot-id ${SNAPIDEN} 
          if [ $? -ne 0 ]
          then
-            MultiLog "Deletion failed"
+            logIt "Delete of snapshot [${SNAPIDEN}] failed" 1
          else
-            MultiLog "Deleted"
+            logIt "Deleted" 0
          fi
       else
-         MultiLog "${SNAPIDEN} (${SNAPGRUP}) is younger than expiry-horizon (keeping)"
+         logIt "${SNAPIDEN} (${SNAPGRUP}) is younger than expiry-horizon (keeping)" 0
       fi
 
       local COUNT=$((${COUNT} +1))
