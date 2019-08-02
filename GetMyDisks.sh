@@ -48,7 +48,7 @@ MYDISKS=($(
         ))
 unset IFS
 
-printf "%s\t%s\t%s\t%s\n" "Size (GiB)" "EBS Volume-ID" Volume-Type Block-Device
+printf "%-10s\t%-22s\t%-11s\t%s\n" "Size (GiB)" "EBS Volume-ID" Volume-Type Block-Device
 
 LOOP=0
 while [[ ${LOOP} -lt ${#MYDISKS[@]} ]]
@@ -58,6 +58,6 @@ do
                 describe-volumes --volume-id ${DISKINFO[1]} \
                 --query "Volumes[].Attachments[].Device[]" \
                 --out text))
-   printf "%10s\t${RED}%s${NC}\t%s\t%s\n" ${DISKINFO[@]} ${BLOCKDEV}
+   printf "%10s\t${RED}%-22s${NC}\t%11s\t%s\n" ${DISKINFO[@]} ${BLOCKDEV}
    ((LOOP+=1))
 done
