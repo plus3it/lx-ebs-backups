@@ -36,7 +36,7 @@ function GetEBSvol() {
 
 # Apply requested Tag-Value
 function TagVol() {
-   aws --region us-west-1 ec2 create-tags --resources ${EBSVOL} --tag "Key=Consistency Group,Value=${TAGVALU}"
+   aws ec2 create-tags --resources ${EBSVOL} --tag "Key=Consistency Group,Value=${TAGVALU}"
 }
 
 # Verify that a valid block-device was passed
