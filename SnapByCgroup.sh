@@ -148,7 +148,6 @@ do
                shift 2;
                ;;
          esac
-         ;;
 	 ;;
       -f|--fsname)
 	 case "$2" in
