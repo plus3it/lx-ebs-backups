@@ -128,7 +128,7 @@ function FSfreezeToggle {
 ##################
 # Option parsing
 ##################
-OPTIONBUFR="$( getopt -o f:v: --long backoff-time:fsname:vgname: -n ${PROGNAME} -- "$@" )"
+OPTIONBUFR="$( getopt -o f:v: --long backoff-time:,fsname:,vgname: -n ${PROGNAME} -- "$@" )"
 # Note the quotes around '$OPTIONBUFR': they are essential!
 eval set -- "${OPTIONBUFR}"
 
