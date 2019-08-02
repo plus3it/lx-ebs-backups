@@ -22,7 +22,7 @@ PROGDIR="$( dirname "${BASH_SOURCE[0]}" )"
 # re-used across scripts
 #########################################
 source ${PROGDIR}/commonVars.env
-source ${PROGDIR}/setcreds.sh
+source ${PROGDIR}/setcred.sh
 
 
 # Generate list of all EBSes attached to this instance
