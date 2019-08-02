@@ -240,11 +240,12 @@ do
 done
 
 # Ensure FIFO is starting to have entries before attempting any FS unfreezes
-while [[ -z $( cat ${FIFO} ) ]]
-do
-   echo "Waiting for snapshot-IDs to be returned..."
-   sleep 1
-done
+timeout 10 bash -c -- 'while [[ -z $( cat ${FIFO} ) ]]
+   do
+      echo "Waiting for snapshot-IDs to be returned..."
+      sleep 1
+   done' || \
+     echo "FIFO took too long to populate: unfreezing any frozen filesystems"
 
 # Unfreeze any enumerated filesystems
 echo "Unfreezing any previously-frozen filesystems..."
