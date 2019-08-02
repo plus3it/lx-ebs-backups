@@ -13,28 +13,18 @@
 # - This script released under the Apache 2.0 OSS License
 #
 ######################################################################
-
-######################################
-##                                  ##
-## Section for variable-declaration ##
-##                                  ##
-######################################
-
-#####################
-# Starter Variables
-#####################
 PATH=/sbin:/usr/sbin:/bin:/usr/bin:/opt/AWScli/bin
-WHEREAMI=`readlink -f ${0}`
-SCRIPTDIR=`dirname ${WHEREAMI}`
-PROGNAME=`basename ${WHEREAMI}`
+PROGNAME="$( basename "${BASH_SOURCE[0]}" )"
+PROGDIR="$( dirname "${BASH_SOURCE[0]}" )"
 
 
 #########################################
-# Put the bulk of our variables into an
-# external file so they can be easily
+# Put the bulk of our variables into
+# sourcable files so they can be easily
 # re-used across scripts
 #########################################
-source ${SCRIPTDIR}/commonVars.env
+source ${PROGDIR}/commonVars.env
+source ${PROGDIR}/setcred.sh
 
 
 ####################
@@ -50,19 +40,11 @@ FIFO=/tmp/EBSfifo
 ##                                  ##
 ######################################
 
-#########################################
-# Output log-data to multiple locations
-#########################################
-function MultiLog() {
-   echo "${1}"
-   logger -p local0.info -t [Flagger] "${1}"
-   # DEFINE ADDITIONAL OUTPUTS, HERE
-}
 
 #################################################
 # Check script invocation-method; set tag-value
 #################################################
-function GetInvocation() {
+function GetInvocation {
    tty -s
    if [ $? -eq 0 ]
    then
@@ -76,21 +58,23 @@ function GetInvocation() {
 ############################################
 # Create list of filesystems to (un)freeze
 ############################################
-function FsSpec() {
-   local FSTYP=$(stat -c %F "${1}" 2> /dev/null)
-   local IDX=${#FSLIST[@]}
+function FsSpec {
+   # Scoped declaration
+   local FSTYP
+   local IDX
+
+   FSTYP=$(stat -c %F "${1}" 2> /dev/null)
+   IDX=${#FSLIST[@]}
 
    case ${FSTYP} in
       "directory")
          FSLIST[${IDX}]=${1}
          ;;
       "")
-         MultiLog "${1} does not exist. Aborting..." >&2
-         exit 1
+         logIt "${1} does not exist. Aborting... " 1
          ;;
       *)
-         MultiLog "${1} is not a directory. Aborting..." >&2
-         exit 1
+         logIt "${1} is not a directory. Aborting... " 1
          ;;
    esac
 }
@@ -99,7 +83,11 @@ function FsSpec() {
 # Toggle set appropriate freeze-state
 # on target filesystems
 #######################################
-function FSfreezeToggle() {
+function FSfreezeToggle {
+   # Scoped declaration
+   local IDX
+   local ACTION=${1}
+
    ACTION=${1}
 
    case ${ACTION} in
@@ -110,44 +98,35 @@ function FSfreezeToggle() {
 	 FRZFLAG="-u"
          ;;
       "")	# THIS SHOULD NEVER MATCH
-	 MultiLog "No freeze method specified" >&2
+	 logIt "No freeze method specified" 1
          ;;
       *)	# THIS SHOULD NEVER MATCH
-	 MultiLog "Invalid freeze method specified" >&2
+	 logIt "Invalid freeze method specified" 1
          ;;
    esac
 
    if [ ${#FSLIST[@]} -gt 0 ]
    then
-      local IDX=0
+      IDX=0
       while [ ${IDX} -lt ${#FSLIST[@]} ]
       do
-         MultiLog "Attempting to ${ACTION} '${FSLIST[${IDX}]}'"
-	 fsfreeze ${FRZFLAG} "${FSLIST[${IDX}]}"
-	 if [ $? -ne 0 ]
-	 then
-	    MultiLog "${ACTION} on ${FSLIST[${IDX}]} exited abnormally" >&2
+         logIt "Attempting to ${ACTION} '${FSLIST[${IDX}]}'" 0
+	 fsfreeze ${FRZFLAG} "${FSLIST[${IDX}]}" && \
+            logIt "${ACTION} succeeded" 0 || \
+	      logIt "${ACTION} on ${FSLIST[${IDX}]} exited abnormally" 1
 	 fi
 	 IDX=$((${IDX} + 1))
       done
    else
-      MultiLog "No filesystems selected for ${ACTION}" >&2
+      logIt "No filesystems selected for ${ACTION}" 0
    fi
 }
 
 
-
-######################################
-##                                  ##
-## Section for defining main        ##
-##    program function and flow     ##
-##                                  ##
-######################################
-
 ##################
 # Option parsing
 ##################
-OPTIONBUFR=`getopt -o v:f: --long vgname:fsname: -n ${PROGNAME} -- "$@"`
+OPTIONBUFR="$( getopt -o v:f: --long vgname:fsname: -n ${PROGNAME} -- "$@" )"
 # Note the quotes around '$OPTIONBUFR': they are essential!
 eval set -- "${OPTIONBUFR}"
 
@@ -161,14 +140,12 @@ do
 	 # argument is not found
 	 case "$2" in
 	    "")
-	       MultiLog "Error: option required but not specified" >&2
 	       shift 2
-	       exit 1
+	       logIt "Error: option required but not specified" 1
 	       ;;
 	    *)
-               MultiLog "VG FUNCTION NOT YET IMPLEMENTED: EXITING..." >&2
 	       shift 2;
-               exit 1
+               logIt "VG FUNCTION NOT YET IMPLEMENTED: EXITING..." 1
 	       ;;
 	 esac
 	 ;;
@@ -178,9 +155,8 @@ do
 	 # argument is not found
 	 case "$2" in
 	    "")
-	       MultiLog "Error: option required but not specified" >&2
 	       shift 2
-	       exit 1
+	       logIt "Error: option required but not specified" 1
 	       ;;
 	    *) 
                FsSpec "${2}"
@@ -193,8 +169,7 @@ do
          break
          ;;
       *)
-         MultiLog "Internal error!" >&2
-         exit 1
+         logIt "Internal error!" 1
          ;;
    esac
 done
@@ -206,14 +181,15 @@ CONGRP=${1:-UNDEF}
 # Make sure the consistency-group is specified
 if [ "${CONGRP}" = "UNDEF" ]
 then
-   MultiLog "No consistency-group specified. Aborting" >&2
-   exit 1
+   logIt "No consistency-group specified. Aborting" 1
 fi
 
 # Generate list of all EBSes attached to this instance
-ALLVOLIDS=`aws ec2 describe-volumes \
-   --filters "Name=attachment.instance-id,Values=${THISINSTID}" \
-   --query "Volumes[].Attachments[].VolumeId" --output text`
+ALLVOLIDS="$(
+      aws ec2 describe-volumes \
+         --filters "Name=attachment.instance-id,Values=${THISINSTID}" \
+         --query "Volumes[].Attachments[].VolumeId" --output text
+   )"
 
 COUNT=0
 for VOLID in ${ALLVOLIDS}
@@ -225,7 +201,7 @@ done
 
 if [[ "${VOLIDS[@]}" = "" ]]
 then
-   MultiLog "No volumes found in the requested consistency-group [${CONGRP}]" >&2
+   logIt "No volumes found in the requested consistency-group [${CONGRP}]" 0
 fi
 
 # Gonna go old school (who the heck uses named pipes in shell scripts???)
@@ -240,7 +216,7 @@ FSfreezeToggle freeze
 # Snapshot volumes
 for EBS in ${VOLIDS[@]}
 do
-   MultiLog "Snapping EBS volume: ${EBS}"
+   logIt "Snapping EBS volume: ${EBS}"
    # Spawn off backgrounded subshells to reduce start-deltas across snap-set
    # Send our snapshot IDs to a FIFO for later use...
    ( \
@@ -253,7 +229,7 @@ done
 GetInvocation
 
 # Read our pipe and apply labels as IDs trickle through the fifo.
-for SNAPID in `cat ${FIFO}`
+for SNAPID in $( cat ${FIFO} )
 do
    echo "Tagging snapshot: ${SNAPID}"
    ( \
