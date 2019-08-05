@@ -1,4 +1,5 @@
-#!/bin/sh
+#!/bin/bash
+# shellcheck disable=SC1090,SC2155,SC2001,SC2015
 #
 # The purpose of this script is to find all backups associated 
 # with my instance-ID with the intent of expiring any images that
@@ -14,72 +15,80 @@
 # - This script released under the Apache 2.0 OSS License
 #
 ######################################################################
-WHEREAMI=`readlink -f ${0}`
-SCRIPTDIR=`dirname ${WHEREAMI}`
-TARGVG=${1:-UNDEF}
+PATH=/sbin:/usr/sbin:/bin:/usr/bin:/opt/AWScli/bin
+export PROGNAME="$( basename "${BASH_SOURCE[0]}" )"
+export PROGDIR="$( dirname "${BASH_SOURCE[0]}" )"
 TZ=zulu
 
 # Put the bulk of our variables into an external file so they
 # can be easily re-used across scripts
-source ${SCRIPTDIR}/commonVars.env
-
-# Output log-data to multiple locations
-function MultiLog() {
-   echo "${1}"
-   logger -p local0.info -t [SnapMaint] "${1}"
-}
+source "${PROGDIR}/commonVars.env"
+source "${PROGDIR}/setcred.sh" && PROGNAME="$( basename "${BASH_SOURCE[0]}" )"
 
 
 # Grab a filtered list candidate snapshots and dump to an array
 # * Filter for "Created By" equals "Automated Backup"
 # * Filter for "Description" contains "<INSTANCE_ID>-bkup"
-function SnapListToArray() {
-   local COUNT=0
-   for SNAPLIST in `aws ec2 describe-snapshots --output=text --filters \
-      "Name=description,Values=*_${THISINSTID}-bkup*" \
-      "Name=tag:Created By,Values=Automated Backup" --query \
-      "Snapshots[].{F1:SnapshotId,F2:StartTime,F3:Description}" | tr '\t' ';'`
+function SnapListToArray {
+   local COUNT
+   local SNAPIDEN
+   local SNAPTIME
+   local SNAPDESC
+   local SNAPGRUP
+
+   COUNT=0
+   for SNAPLIST in $( aws ec2 describe-snapshots --output=text --filters \
+           "Name=tag:Name,Values=AutoBack (${THISINSTID})*" \
+           "Name=tag:Created By,Values=Automated Backup" --query \
+           "Snapshots[].{F1:SnapshotId,F2:StartTime,F3:Description}" | \
+         tr '\t' ';'
+      )
    do
-      local SNAPIDEN=$(echo ${SNAPLIST} | cut -d ";" -f 1)
-      local SNAPTIME=$( date -d "`echo ${SNAPLIST} | cut -d ";" -f 2 | sed '{
-         s/\....Z$//
-         s/T/ /
-      }'`" "+%s")
-      local SNAPDESC=$(echo ${SNAPLIST} | cut -d ";" -f 3)
-      local SNAPGRUP=$(echo ${SNAPDESC} | sed 's/^.*-bkup-/GROUP_/')
+      SNAPIDEN=$(echo "${SNAPLIST}" | cut -d ";" -f 1)
+      SNAPTIME=$( date -d "$(
+               echo "${SNAPLIST}" | cut -d ";" -f 2 | \
+               sed '{
+                  s/\....Z$//
+                  s/T/ /
+               }'
+            )" "+%s"
+         )
+      SNAPDESC=$(echo "${SNAPLIST}" | cut -d ";" -f 3)
+      SNAPGRUP=$(echo "${SNAPDESC}" | sed 's/^.*-bkup-/GROUP_/')
       FIXLIST="${SNAPIDEN};${SNAPTIME};${SNAPGRUP}"
       SNAPARRAY[${COUNT}]="${FIXLIST}"
-      local COUNT=$((${COUNT} +1))
+      COUNT=$(( COUNT + 1 ))
    done
 }
 
-function CheckSnapAge(){
+function CheckSnapAge {
    local COUNT=0
+   local SNAPIDEN
+   local SNAPTIME
+   local SNAPGRUP
 
-   MultiLog "Beginning stale snapshot cleanup (killing files older than ${EXPDATE})"
+   logIt "Beginning stale snapshot cleanup (killing files older than ${EXPDATE})" 0
 
+   COUNT=0
    while [ ${COUNT} -lt ${#SNAPARRAY[@]} ]
    do
-      local SNAPIDEN=`echo ${SNAPARRAY[${COUNT}]} | cut -d ";" -f 1`
-      local SNAPTIME=`echo ${SNAPARRAY[${COUNT}]} | cut -d ";" -f 2`
-      local SNAPGRUP=`echo ${SNAPARRAY[${COUNT}]} | cut -d ";" -f 3`
+      SNAPIDEN="$( echo "${SNAPARRAY[${COUNT}]}" | cut -d ";" -f 1 )"
+      SNAPTIME="$( echo "${SNAPARRAY[${COUNT}]}" | cut -d ";" -f 2 )"
+      SNAPGRUP="$( echo "${SNAPARRAY[${COUNT}]}" | cut -d ";" -f 3 )"
 
 
-      if [ $((${CURCTIME} - ${SNAPTIME})) -gt $((${CURCTIME} - ${EXPBEYOND})) ]
+      if [ $(( CURCTIME - SNAPTIME )) -gt $(( CURCTIME - EXPBEYOND )) ]
       then
-         MultiLog "${SNAPIDEN} is older than expiry-horizon. Deleteing..."
-         aws ec2 delete-snapshot --snapshot-id ${SNAPIDEN} 
-         if [ $? -ne 0 ]
-         then
-            MultiLog "Deletion failed"
-         else
-            MultiLog "Deleted"
-         fi
+         logIt "${SNAPIDEN} is older than expiry-horizon. Deleteing..." 0
+         aws ec2 delete-snapshot --snapshot-id "${SNAPIDEN}" && \
+            logIt "Deleted" 0 || \
+              logIt "Delete of snapshot [${SNAPIDEN}] failed" 1
+
       else
-         MultiLog "${SNAPIDEN} (${SNAPGRUP}) is younger than expiry-horizon (keeping)"
+         logIt "${SNAPIDEN} (${SNAPGRUP}) is younger than expiry-horizon (keeping)" 0
       fi
 
-      local COUNT=$((${COUNT} +1))
+      COUNT=$(( COUNT + 1 ))
    done
 }
 

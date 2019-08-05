@@ -1,4 +1,5 @@
-#!/bin/sh
+#!/bin/bash
+# shellcheck disable=SC2155
 #
 # Apply tags to EBS volumes by mapping from local block devices
 #
@@ -12,8 +13,8 @@ MDDOCPATH="latest/dynamic/instance-identity/document"
 MDDOCINFO=$(curl -s http://${MDHOST}/${MDDOCPATH}/)
 if [[ -x /usr/bin/jq ]]
 then
-   export AWS_DEFAULT_REGION=$(echo ${MDDOCINFO} | jq -r .region)
-   INSTANCID=$(echo ${MDDOCINFO} | jq -r .instanceId)
+   export AWS_DEFAULT_REGION=$( echo "${MDDOCINFO}" | jq -r .region )
+   INSTANCID=$( echo "${MDDOCINFO}" | jq -r .instanceId )
 else
    echo "The 'jq' utility is not installed. Aborting..." > /dev/stderr
    exit 1
@@ -22,21 +23,26 @@ fi
 
 # Convert OS-level dev-path name to EBS attachment-name
 function Blk2Xen() {
-   local DEVNAME=$(echo $1 | sed 's/xvd/sd/')
-   printf ${DEVNAME}
+   local DEVNAME
+   local EBSVOLID
+
+   DEVNAME="${1//xvd/sd}"
+   printf "%s" "${DEVNAME}"
 }
 
 function GetEBSvol() {
-   local EBSVOLID=$(aws ec2 describe-volumes --filters \
-                    "Name=attachment.instance-id,Values=${INSTANCID}" \
-                    "Name=attachment.device,Values=${EBSDEV}" \
-                    --query "Volumes[].VolumeId" --out text)
-   printf ${EBSVOLID}
+   EBSVOLID=$(
+         aws ec2 describe-volumes --filters \
+           "Name=attachment.instance-id,Values=${INSTANCID}" \
+           "Name=attachment.device,Values=${EBSDEV}" \
+           --query "Volumes[].VolumeId" --out text
+      )
+   printf "%s" "${EBSVOLID}"
 }
 
 # Apply requested Tag-Value
 function TagVol() {
-   aws --region us-west-1 ec2 create-tags --resources ${EBSVOL} --tag "Key=Consistency Group,Value=${TAGVALU}"
+   aws ec2 create-tags --resources "${EBSVOL}" --tag "Key=Consistency Group,Value=${TAGVALU}"
 }
 
 # Verify that a valid block-device was passed
@@ -49,13 +55,13 @@ then
    echo "Error: ${DEVNODE} not a valid block-device. Aborting..." > /dev/stderr
    exit 1
 else
-   EBSDEV=$(Blk2Xen "${DEVNODE}")
-   EBSVOL=$(GetEBSvol ${EBSDEV})
+   EBSDEV=$( Blk2Xen "${DEVNODE}" )
+   EBSVOL=$( GetEBSvol "${EBSDEV}" )
 fi
 
 # Apply the tag
-printf "Setting 'Consistency Group' tag to \"${TAGVALU}\" on ${EBSVOL}... "
-if [[ $(TagVol "${TAGVALU}" ${EBSVOL})$? -eq 0 ]]
+printf "Setting 'Consistency Group' tag to \"%s\" on %s... " "${TAGVALU}" "${EBSVOL}"
+if [[ $(TagVol "${TAGVALU}" "${EBSVOL}" )$? -eq 0 ]]
 then
    echo "Command returned success."
 else

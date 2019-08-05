@@ -1,4 +1,5 @@
-#!/bin/sh
+#!/bin/bash
+# shellcheck disable=SC1090,SC2015,SC2013,SC2236
 #
 # This script is designed to perform consistent backups of
 # - Selected EBS volumes (referenced by volume-id)
@@ -13,84 +14,74 @@
 # - This script released under the Apache 2.0 OSS License
 #
 ######################################################################
-
-######################################
-##                                  ##
-## Section for variable-declaration ##
-##                                  ##
-######################################
-
-#####################
-# Starter Variables
-#####################
 PATH=/sbin:/usr/sbin:/bin:/usr/bin:/opt/AWScli/bin
-WHEREAMI=`readlink -f ${0}`
-SCRIPTDIR=`dirname ${WHEREAMI}`
-PROGNAME=`basename ${WHEREAMI}`
+PROGNAME="$( basename "${BASH_SOURCE[0]}" )"
+PROGDIR="$( dirname "${BASH_SOURCE[0]}" )"
+BACKOFFSECS=$(( RANDOM % 300 ))
+BKNAME="$(hostname -s)_${THISINSTID}-bkup-${DATESTMP}"
+FIFO="/tmp/.EBSfifo.$( dd if=/dev/urandom | tr -dc 'a-zA-Z0-9' | \
+                       fold -w 10 | head -n 1
+                     )"
 
 
 #########################################
-# Put the bulk of our variables into an
-# external file so they can be easily
+# Put the bulk of our variables into
+# sourcable files so they can be easily
 # re-used across scripts
 #########################################
-source ${SCRIPTDIR}/commonVars.env
+source "${PROGDIR}/commonVars.env"
+source "${PROGDIR}/setcred.sh" && PROGNAME="$( basename "${BASH_SOURCE[0]}" )"
 
+# Print out a basic usage message
+function UsageMsg {
+   (
+      # Special cases
+      if [[ ! -z ${MISSINGARGS+x} ]]
+      then
+         printf "Failed to pass one or more mandatory arguments\n\n"
+      elif [[ ! -z ${EXCLUSIVEARGS+x} ]]
+      then
+         printf "Passed two or more exclusive arguments\n\n"
+      fi
 
-####################
-# SCRIPT Variables
-####################
-BKNAME="$(hostname -s)_${THISINSTID}-bkup-${DATESTMP}"
-FIFO=/tmp/EBSfifo
-
-
-######################################
-##                                  ##
-## Section for function-declaration ##
-##                                  ##
-######################################
-
-#########################################
-# Output log-data to multiple locations
-#########################################
-function MultiLog() {
-   echo "${1}"
-   logger -p local0.info -t [Flagger] "${1}"
-   # DEFINE ADDITIONAL OUTPUTS, HERE
+      echo "Usage: ${0} [GNU long option] [option] ..."
+      echo "  Options:"
+      printf "\t-f <LIST_OF_FILESYSTEMS_TO_FREEZE>  \n"
+      printf "\t-h # print this message  \n"
+      printf "\t-T <MAXIMUM_BACKOFF_TIME>  \n"
+      printf "\t-v <VOLUME_GROUP_NAME>  \n"
+      echo "  GNU long options:"
+      printf "\t--fsname  <LIST_OF_FILESYSTEMS_TO_FREEZE> \n"
+      printf "\t--help # print this message  \n"
+      printf "\t--max-backoff-time <MAXIMUM_BACKOFF_TIME>  \n"
+      printf "\t--vgname <VOLUME_GROUP_NAME>  \n"
+   ) >&2
+   kill -s TERM " ${TOP_PID}"
 }
-
-#################################################
 # Check script invocation-method; set tag-value
-#################################################
-function GetInvocation() {
-   tty -s
-   if [ $? -eq 0 ]
-   then
-      CREATEMETHOD="Manually-Initiated Backup"
-   elif [ $? -eq 1 ]
-   then
+function GetInvocation {
+   tty -s && CREATEMETHOD="Manually-Initiated Backup" || \
       CREATEMETHOD="Automated Backup"
-   fi
 }
 
-############################################
 # Create list of filesystems to (un)freeze
-############################################
-function FsSpec() {
-   local FSTYP=$(stat -c %F "${1}" 2> /dev/null)
-   local IDX=${#FSLIST[@]}
+function FsSpec {
+   # Scoped declaration
+   local FSTYP
+   local IDX
+
+   FSTYP=$(stat -c %F "${1}" 2> /dev/null)
+   IDX=${#FSLIST[@]}
 
    case ${FSTYP} in
       "directory")
          FSLIST[${IDX}]=${1}
          ;;
       "")
-         MultiLog "${1} does not exist. Aborting..." >&2
-         exit 1
+         logIt "${1} does not exist. Aborting... " 1
          ;;
       *)
-         MultiLog "${1} is not a directory. Aborting..." >&2
-         exit 1
+         logIt "${1} is not a directory. Aborting... " 1
          ;;
    esac
 }
@@ -99,7 +90,11 @@ function FsSpec() {
 # Toggle set appropriate freeze-state
 # on target filesystems
 #######################################
-function FSfreezeToggle() {
+function FSfreezeToggle {
+   # Scoped declaration
+   local IDX
+   local ACTION=${1}
+
    ACTION=${1}
 
    case ${ACTION} in
@@ -110,81 +105,83 @@ function FSfreezeToggle() {
 	 FRZFLAG="-u"
          ;;
       "")	# THIS SHOULD NEVER MATCH
-	 MultiLog "No freeze method specified" >&2
+	 logIt "No freeze method specified" 1
          ;;
       *)	# THIS SHOULD NEVER MATCH
-	 MultiLog "Invalid freeze method specified" >&2
+	 logIt "Invalid freeze method specified" 1
          ;;
    esac
 
    if [ ${#FSLIST[@]} -gt 0 ]
    then
-      local IDX=0
+      IDX=0
       while [ ${IDX} -lt ${#FSLIST[@]} ]
       do
-         MultiLog "Attempting to ${ACTION} '${FSLIST[${IDX}]}'"
-	 fsfreeze ${FRZFLAG} "${FSLIST[${IDX}]}"
-	 if [ $? -ne 0 ]
-	 then
-	    MultiLog "${ACTION} on ${FSLIST[${IDX}]} exited abnormally" >&2
-	 fi
-	 IDX=$((${IDX} + 1))
+         logIt "Attempting to ${ACTION} '${FSLIST[${IDX}]}'" 0
+
+	 fsfreeze ${FRZFLAG} "${FSLIST[${IDX}]}" && \
+            logIt "${ACTION} succeeded" 0 || \
+	      logIt "${ACTION} on ${FSLIST[${IDX}]} exited abnormally" 1
+
+	 IDX=$(( IDX + 1 ))
       done
    else
-      MultiLog "No filesystems selected for ${ACTION}" >&2
+      logIt "No filesystems selected for ${ACTION}" 0
    fi
 }
 
 
-
-######################################
-##                                  ##
-## Section for defining main        ##
-##    program function and flow     ##
-##                                  ##
-######################################
-
 ##################
 # Option parsing
 ##################
-OPTIONBUFR=`getopt -o v:f: --long vgname:fsname: -n ${PROGNAME} -- "$@"`
+OPTIONBUFR="$(
+      getopt -o f:hT:v: --long fsname:,help,max-backoff-time:,vgname: \
+        -n "${PROGNAME}" -- "$@"
+   )"
 # Note the quotes around '$OPTIONBUFR': they are essential!
 eval set -- "${OPTIONBUFR}"
 
 # Parse our flagged args
-while [ true ]
+while true
 do
    case "$1" in
-      -v|--vgname)
-         # Mandatory argument. Operating in quoted mode: an
-	 # empty parameter will be generated if its optional
-	 # argument is not found
-	 case "$2" in
-	    "")
-	       MultiLog "Error: option required but not specified" >&2
-	       shift 2
-	       exit 1
-	       ;;
-	    *)
-               MultiLog "VG FUNCTION NOT YET IMPLEMENTED: EXITING..." >&2
-	       shift 2;
-               exit 1
-	       ;;
-	 esac
-	 ;;
       -f|--fsname)
-         # Mandatory argument. Operating in quoted mode: an
-	 # empty parameter will be generated if its optional
-	 # argument is not found
 	 case "$2" in
 	    "")
-	       MultiLog "Error: option required but not specified" >&2
 	       shift 2
-	       exit 1
+	       logIt "Error: option required but not specified" 1
 	       ;;
 	    *) 
                FsSpec "${2}"
                shift 2;
+	       ;;
+	 esac
+	 ;;
+      -h|--help)
+         UsageMsg
+         ;;
+      -T|--max-backoff-time)
+         case "$2" in
+            "")
+               logIt "Error: option required but not specified" 1
+               shift 2;
+               exit 1
+               ;;
+            *)
+               BACKOFFSECS=$(( RANDOM % ${2} ))
+               shift 2;
+               ;;
+         esac
+	 ;;
+      -v|--vgname)
+	 case "$2" in
+	    "")
+	       shift 2
+	       logIt "Error: option required but not specified" 1
+	       ;;
+	    *)
+	       shift 2;
+               logIt "VG FUNCTION NOT YET IMPLEMENTED: EXITING..." 1
 	       ;;
 	 esac
 	 ;;
@@ -193,8 +190,7 @@ do
          break
          ;;
       *)
-         MultiLog "Internal error!" >&2
-         exit 1
+         logIt "Internal error!" 1
          ;;
    esac
 done
@@ -206,69 +202,87 @@ CONGRP=${1:-UNDEF}
 # Make sure the consistency-group is specified
 if [ "${CONGRP}" = "UNDEF" ]
 then
-   MultiLog "No consistency-group specified. Aborting" >&2
-   exit 1
+   logIt "No consistency-group specified. Aborting" 1
 fi
 
-# Generate list of all EBSes attached to this instance
-ALLVOLIDS=`aws ec2 describe-volumes \
-   --filters "Name=attachment.instance-id,Values=${THISINSTID}" \
-   --query "Volumes[].Attachments[].VolumeId" --output text`
+# Add a semi-random backoff to reduce likelihood of conflicts with other 
+# EC2s' backup-activities
+printf "Taking random-pause for %s seconds... " "${BACKOFFSECS}"
+sleep "${BACKOFFSECS}" && echo "Continuing"
 
+# Generate list of all EBSes attached to this instance
+ALLVOLIDS="$(
+      aws ec2 describe-volumes \
+         --filters "Name=attachment.instance-id,Values=${THISINSTID}" \
+         --query "Volumes[].Attachments[].VolumeId" --output text
+   )"
+
+# Check for EBS tagged for named group
+printf "Seeing if any disks match tag [%s]." "${CONGRP}"
 COUNT=0
 for VOLID in ${ALLVOLIDS}
 do
-   VOLIDS[${COUNT}]=$(aws ec2 describe-volumes --volume-id ${VOLID} --filters "Name=tag:Consistency Group,Values=${CONGRP}" --query "Volumes[].Attachments[].VolumeId" --output text)
-   COUNT=$((${COUNT} + 1))
+   VOLCHK=$(
+         aws ec2 describe-volumes --volume-id "${VOLID}" \
+           --filters "Name=tag:Consistency Group,Values=${CONGRP}" \
+           --query "Volumes[].Attachments[].VolumeId" --output text
+      )
+   if [[ ! -z ${VOLCHK} ]]
+   then
+      VOLIDS[${COUNT}]="${VOLCHK}"
+   fi
+   printf "."
+   COUNT=$(( COUNT + 1 ))
 done
+echo
 
-
-if [[ "${VOLIDS[@]}" = "" ]]
-then
-   MultiLog "No volumes found in the requested consistency-group [${CONGRP}]" >&2
+# Exit if no EBSes found for consistency-group
+if [[ ${#VOLIDS[@]} -eq 0 ]]
+ then
+   logIt "No volumes found in the requested consistency-group [${CONGRP}]" 1
 fi
 
 # Gonna go old school (who the heck uses named pipes in shell scripts???)
 if [[ ! -p ${FIFO} ]]
 then
-   mkfifo ${FIFO}
+   mkfifo "${FIFO}"
 fi
 
 # Freeze any enumerated filesystems
 FSfreezeToggle freeze
 
 # Snapshot volumes
-for EBS in ${VOLIDS[@]}
+for EBS in "${VOLIDS[@]}"
 do
-   MultiLog "Snapping EBS volume: ${EBS}"
+   logIt "Snapping EBS volume: ${EBS}" 0
    # Spawn off backgrounded subshells to reduce start-deltas across snap-set
    # Send our snapshot IDs to a FIFO for later use...
    ( \
-      aws ec2 create-snapshot --output=text --description ${BKNAME} \
-        --volume-id ${EBS} --query SnapshotId > ${FIFO}
+      aws ec2 create-snapshot --output=text --description "${BKNAME}" \
+        --volume-id "${EBS}" --query SnapshotId > "${FIFO}"
    ) &
 done
+
+# Unfreeze any enumerated filesystems
+echo "Unfreezing any previously-frozen filesystems..."
+FSfreezeToggle unfreeze
 
 # Set our "Created By" label
 GetInvocation
 
 # Read our pipe and apply labels as IDs trickle through the fifo.
-for SNAPID in `cat ${FIFO}`
+for SNAPID in $( cat "${FIFO}" )
 do
    echo "Tagging snapshot: ${SNAPID}"
-   ( \
-   aws ec2 create-tags --resource ${SNAPID} --tags \
-      Key="Created By",Value="${CREATEMETHOD}" ; \
-   aws ec2 create-tags --resource ${SNAPID} --tags \
-      Key="Name",Value="AutoBack (${THISINSTID}) $(date '+%Y-%m-%d')" ; \
-   aws ec2 create-tags --resource ${SNAPID} --tags \
-      Key="Snapshot Group",Value="${DATESTMP} (${THISINSTID})" ; \
-   ) &
+   timeout 30 bash -c "
+         aws ec2 create-tags --resource ${SNAPID} --tags \
+            'Key=Created By,Value=${CREATEMETHOD}' ; \
+         aws ec2 create-tags --resource ${SNAPID} --tags \
+            'Key=Name,Value=AutoBack ('${THISINSTID}') $(date "+%Y-%m-%d")' ; \
+         aws ec2 create-tags --resource ${SNAPID} --tags \
+            'Key=Snapshot Group,Value=${DATESTMP} (${THISINSTID})' ; \
+      " && echo "Success" || echo "Failed"
 done
 
-# Unfreeze any enumerated filesystems
-echo "Unfreezing..."
-FSfreezeToggle unfreeze
-
 # Cleanup on aisle six!
-rm ${FIFO}
+rm "${FIFO}" || logIt "Failed to remove ${FIFO}" 1
