@@ -274,10 +274,15 @@ GetInvocation
 for SNAPID in $( cat "${FIFO}" )
 do
    echo "Tagging snapshot: ${SNAPID}"
-   export SRCVOL=$(
+
+   # Pull volume-id of snapshot's source-volume
+   SRCVOL=$(
          aws ec2 describe-snapshots --snapshot-id "${SNAPID}" \
            --query 'Snapshots[].VolumeId' --output text
       )
+   export SRCVOL
+
+   # Pull info about snapshot's source-volume
    VOLINFO=$(
          aws ec2 describe-volumes --volume-id "${SRCVOL}" --query \
          'Volumes[].{AvailabilityZone:AvailabilityZone,Attachments:Attachments[].{InstanceId:InstanceId,Device:Device}}'
@@ -296,7 +301,8 @@ do
          sed -e 's/"//g' -e 's/,$//'
       )
 
-   timeout 30 bash -c "
+   # Give sixty seconds for all the tagging actions to complete
+   timeout 60 bash -c "
          aws ec2 create-tags --resource ${SNAPID} --tags \
             'Key=Created By,Value=${CREATEMETHOD}' ; \
          aws ec2 create-tags --resource ${SNAPID} --tags \
@@ -310,6 +316,9 @@ do
          aws ec2 create-tags --resource ${SNAPID} --tags \
             'Key=Original AZ,Value=${ORIGAZ}' ; \
       " && echo "Success" || echo "Failed"
+
+   # Should be reduntant, but let's be super-clean
+   unset SRCVOL
 done
 
 # Cleanup on aisle six!
