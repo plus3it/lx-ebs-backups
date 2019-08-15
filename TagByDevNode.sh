@@ -1,5 +1,5 @@
 #!/bin/bash
-# shellcheck disable=SC2155
+# shellcheck disable=SC2155,SC1004,SC2236
 #
 # Apply tags to EBS volumes by mapping from local block devices
 #
@@ -11,18 +11,10 @@ DEVNODE="${2:-UNDEF}"
 MDHOST="169.254.169.254"
 MDDOCPATH="latest/dynamic/instance-identity/document"
 MDDOCINFO=$(curl -s http://${MDHOST}/${MDDOCPATH}/)
-if [[ -x /usr/bin/jq ]]
-then
-   export AWS_DEFAULT_REGION=$( echo "${MDDOCINFO}" | jq -r .region )
-   INSTANCID=$( echo "${MDDOCINFO}" | jq -r .instanceId )
-else
-   echo "The 'jq' utility is not installed. Aborting..." > /dev/stderr
-   exit 1
-fi
 
 
 # Convert OS-level dev-path name to EBS attachment-name
-function Blk2Xen() {
+function Blk2Xen {
    local DEVNAME
    local EBSVOLID
 
@@ -30,7 +22,7 @@ function Blk2Xen() {
    printf "%s" "${DEVNAME}"
 }
 
-function GetEBSvol() {
+function GetEBSvol {
    EBSVOLID=$(
          aws ec2 describe-volumes --filters \
            "Name=attachment.instance-id,Values=${INSTANCID}" \
@@ -41,9 +33,30 @@ function GetEBSvol() {
 }
 
 # Apply requested Tag-Value
-function TagVol() {
+function TagVol {
    aws ec2 create-tags --resources "${EBSVOL}" --tag "Key=Consistency Group,Value=${TAGVALU}"
 }
+
+
+# Extract data from JSON-struct
+function ExtractFromJson {
+   local JSON_ELEM
+   JSON_ELEM="${1}"
+
+   if [[ ! -z ${JSON_ELEM} ]]
+   then
+      echo "${MDDOCINFO}" | \
+        python -c 'import json,sys; \
+          obj=json.load(sys.stdin); \
+          print obj["'"${JSON_ELEM}"'"]'
+   else
+      logIt "No credential-element was specified. Aborting... " 1
+   fi
+}
+
+# Set further needed values...
+export AWS_DEFAULT_REGION=$( ExtractFromJson "region" )
+export INSTANCID=$( ExtractFromJson "instanceId" )
 
 # Verify that a valid block-device was passed
 if [[ ${DEVNODE} = "UNDEF" ]]
