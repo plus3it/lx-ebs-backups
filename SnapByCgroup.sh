@@ -274,14 +274,51 @@ GetInvocation
 for SNAPID in $( cat "${FIFO}" )
 do
    echo "Tagging snapshot: ${SNAPID}"
-   timeout 30 bash -c "
+
+   # Pull volume-id of snapshot's source-volume
+   SRCVOL=$(
+         aws ec2 describe-snapshots --snapshot-id "${SNAPID}" \
+           --query 'Snapshots[].VolumeId' --output text
+      )
+   export SRCVOL
+
+   # Pull info about snapshot's source-volume
+   VOLINFO=$(
+         aws ec2 describe-volumes --volume-id "${SRCVOL}" --query \
+         'Volumes[].{AvailabilityZone:AvailabilityZone,Attachments:Attachments[].{InstanceId:InstanceId,Device:Device}}'
+      )
+   ORIGAZ=$(
+         echo "${VOLINFO}" | \
+         awk  '/ "AvailabilityZone":.*?[^\\]"/ { print $2 }' | \
+         sed -e 's/"//g' -e 's/,$//'
+      )
+   ORIGDEV=$(
+         echo "${VOLINFO}" | awk  '/ "Device":.*?[^\\]"/ { print $2 }' | \
+         sed -e 's/"//g' -e 's/,$//'
+      )
+   ORIGINST=$(
+         echo "${VOLINFO}" | awk  '/ "InstanceId":.*?[^\\]"/ { print $2 }' | \
+         sed -e 's/"//g' -e 's/,$//'
+      )
+
+   # Give sixty seconds for all the tagging actions to complete
+   timeout 60 bash -c "
          aws ec2 create-tags --resource ${SNAPID} --tags \
             'Key=Created By,Value=${CREATEMETHOD}' ; \
          aws ec2 create-tags --resource ${SNAPID} --tags \
             'Key=Name,Value=AutoBack ('${THISINSTID}') $(date "+%Y-%m-%d")' ; \
          aws ec2 create-tags --resource ${SNAPID} --tags \
             'Key=Snapshot Group,Value=${DATESTMP} (${THISINSTID})' ; \
+         aws ec2 create-tags --resource ${SNAPID} --tags \
+            'Key=Original Instance,Value=${ORIGINST}' ; \
+         aws ec2 create-tags --resource ${SNAPID} --tags \
+            'Key=Original Attachment,Value=${ORIGDEV}' ; \
+         aws ec2 create-tags --resource ${SNAPID} --tags \
+            'Key=Original AZ,Value=${ORIGAZ}' ; \
       " && echo "Success" || echo "Failed"
+
+   # Should be reduntant, but let's be super-clean
+   unset SRCVOL
 done
 
 # Cleanup on aisle six!
