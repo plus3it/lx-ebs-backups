@@ -1,5 +1,5 @@
 #!/bin/bash
-# shellcheck disable=SC2155,SC2236
+# shellcheck disable=SC2155,SC2236,SC1004
 #
 # Script to fetch authentication tokens using an EC2's IAM instance-role
 ########################################################################
@@ -46,8 +46,9 @@ function ExtractCredElement {
    if [[ ! -z ${CRED_ELEM} ]]
    then
       echo "${CRED_RETURN}" | \
-        python -c 'import json,sys; 
-          obj=json.load(sys.stdin);print obj["'"${CRED_ELEM}"'"]'
+        python -c 'import json,sys; \
+          obj=json.load(sys.stdin); \
+          print obj["'"${CRED_ELEM}"'"]'
    else
       logIt "No credential-element was specified. Aborting... " 1
    fi
@@ -64,7 +65,7 @@ then
    logIt "Could not detect an attached IAM instance-role" 1
 else
    logIt "Found an attached IAM instance-role [${INSTANCEROLENAME}]" 0
-   CRED_RETURN=$( curl -skL 
+   CRED_RETURN=$( curl -skL \
       "http://169.254.169.254/latest/meta-data/iam/security-credentials/${INSTANCEROLENAME}/"
    )
 fi
