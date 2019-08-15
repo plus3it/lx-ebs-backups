@@ -1,5 +1,5 @@
 #!/bin/bash
-# shellcheck disable=SC2155,SC1090,SC2207
+# shellcheck disable=SC2155,SC1090,SC2207,SC1004,SC2236
 #
 # Get a list of EBSes attached to this system and present them
 # in a formatted list.
@@ -14,14 +14,25 @@ MDDOCINFO=$(curl -s http://${MDHOST}/${MDDOCPATH}/)
 # Lets force the use of credentials from attached IAM Instance-role
 source "${PROGDIR}/setcred.sh" && PROGNAME="$( basename "${BASH_SOURCE[0]}" )"
 
-# Pull useful info from meta-data docment
-if [[ -x /usr/bin/jq ]]
-then
-   INSTANCID=$(echo "${MDDOCINFO}" | jq -r .instanceId)
-   AWSREGION=$(echo "${MDDOCINFO}" | jq -r .region)
-else
-   logIt "The 'jq' utility is not installed. Aborting... " 1
-fi
+# Extract data from JSON-struct
+function ExtractFromJson {
+   local JSON_ELEM
+   JSON_ELEM="${1}"
+
+   if [[ ! -z ${JSON_ELEM} ]]
+   then
+      echo "${MDDOCINFO}" | \
+        python -c 'import json,sys; \
+          obj=json.load(sys.stdin); \
+          print obj["'"${JSON_ELEM}"'"]'
+   else
+      logIt "No credential-element was specified. Aborting... " 1
+   fi
+}
+
+# Set further needed values...
+export AWSREGION=$( ExtractFromJson "region" )
+export INSTANCID=$( ExtractFromJson "instanceId" )
 
 # Color-formatting flags
 RED='\033[0;31m'
