@@ -23,6 +23,11 @@ FIFO="/tmp/.EBSfifo.$( dd if=/dev/urandom | tr -dc 'a-zA-Z0-9' | \
                        fold -w 10 | head -n 1
                      )"
 
+# Function-abort hooks
+trap "exit 1" TERM
+export TOP_PID=$$
+
+
 
 #########################################
 # Put the bulk of our variables into
@@ -67,23 +72,31 @@ function GetInvocation {
 # Create list of filesystems to (un)freeze
 function FsSpec {
    # Scoped declaration
-   local FSTYP
+   local SPECISFS
    local IDX
 
-   FSTYP=$(stat -c %F "${1}" 2> /dev/null)
+   # Let's avoid trying to freeze root filesystems
+   if [[ ${1} == / ]] ||
+      [[ ${1} == /tmp ]] ||
+      [[ ${1} == /var ]] ||
+      [[ ${1} == /var/log ]] ||
+      [[ ${1} == /var/log/audit ]]
+   then
+      logIt "Not a good idea to freeze ${1}. Aborting... " 1
+      kill -s TERM " ${TOP_PID}"
+   fi
+
+   SPECISFS=$(mountpoint "${1}" 2> /dev/null)
    IDX=${#FSLIST[@]}
 
-   case ${FSTYP} in
-      "directory")
-         FSLIST[${IDX}]=${1}
-         ;;
-      "")
-         logIt "${1} does not exist. Aborting... " 1
-         ;;
-      *)
-         logIt "${1} is not a directory. Aborting... " 1
-         ;;
-   esac
+   if [[ ${SPECISFS} =~ "is a mountpoint" ]]
+   then
+      logIt "${1} is a valid filesystem. Continuing... " 0
+      FSLIST[${IDX}]=${1}
+   else
+      logIt "${1} is not a valid filesystem. Aborting... " 1
+      kill -s TERM " ${TOP_PID}"
+   fi
 }
 
 #######################################
@@ -218,7 +231,7 @@ ALLVOLIDS="$(
    )"
 
 # Check for EBS tagged for named group
-printf "Seeing if any disks match tag [%s]." "${CONGRP}"
+logIt "Seeing if any disks match tag ${CONGRP}" 0
 COUNT=0
 for VOLID in ${ALLVOLIDS}
 do
@@ -227,11 +240,19 @@ do
            --filters "Name=tag:Consistency Group,Values=${CONGRP}" \
            --query "Volumes[].Attachments[].VolumeId" --output text
       )
+
+   # Add any relevant tagged-volumes to snap-list
    if [[ ! -z ${VOLCHK} ]]
    then
       VOLIDS[${COUNT}]="${VOLCHK}"
    fi
-   printf "."
+
+   # So people don't think we're stuck
+   if [[ ${DEBUG} == true ]]
+   then
+      printf "."
+   fi
+
    COUNT=$(( COUNT + 1 ))
 done
 echo
@@ -264,7 +285,7 @@ do
 done
 
 # Unfreeze any enumerated filesystems
-echo "Unfreezing any previously-frozen filesystems..."
+logIt "Unfreezing any previously-frozen filesystems..." 0
 FSfreezeToggle unfreeze
 
 # Set our "Created By" label
@@ -273,7 +294,7 @@ GetInvocation
 # Read our pipe and apply labels as IDs trickle through the fifo.
 for SNAPID in $( cat "${FIFO}" )
 do
-   echo "Tagging snapshot: ${SNAPID}"
+   logIt "Tagging snapshot: ${SNAPID}" 0
 
    # Pull volume-id of snapshot's source-volume
    SRCVOL=$(
@@ -315,7 +336,7 @@ do
             'Key=Original Attachment,Value=${ORIGDEV}' ; \
          aws ec2 create-tags --resource ${SNAPID} --tags \
             'Key=Original AZ,Value=${ORIGAZ}' ; \
-      " && echo "Success" || echo "Failed"
+      " && logIt "Success" 0 || logIt "Failed" 1
 
    # Should be reduntant, but let's be super-clean
    unset SRCVOL
