@@ -1,5 +1,7 @@
+#!/bin/env python
 import boto3    
 
+# Make our connections to the service
 ec2client = boto3.client('ec2')
 ec2resource = boto3.resource('ec2')
 
@@ -13,25 +15,29 @@ filtered_response = ec2client.describe_instances(
         ]
     )
 
-# Intialize list-var
-instance_list = []
-blockdev_list = []
-volids_list = []
+# Get list of EBS mappings
+def get_dev_maps(blockdev_list = []):
+    for reservation in filtered_response['Reservations']:
+        for instance in reservation['Instances']:
+            blockdev_list.append(instance['BlockDeviceMappings'])
 
-# Populate instance list-var
-for reservation in filtered_response['Reservations']:
-    for instance in reservation['Instances']:
-        instance_list.append(instance['InstanceId'])
-        blockdev_list.append(instance['BlockDeviceMappings'])
+    return blockdev_list;
 
-# Walk blockdev_list to get volume-IDs
-for top in blockdev_list:
-    for next in top:
-        ebs_struct = next['Ebs']
-        volids_list.append(ebs_struct['VolumeId'])
+
+# Walk EBS mappings to get volume-IDs
+def get_vol_list(dev_list = [], *args):
+    volids_list = []
+
+    for top in dev_list:
+        for next in top:
+            ebs_struct = next['Ebs']
+            volids_list.append(ebs_struct['VolumeId'])
+
+    return volids_list;
+
 
 # Iterate volume-list to create snapshots
-for volume in volids_list:
+for volume in get_vol_list(get_dev_maps()):
 
     # grab info about volume to be snapped
     volume_info = ec2resource.Volume(volume).attachments[0]
@@ -39,7 +45,7 @@ for volume in volids_list:
     volume_dev = volume_info['Device']
 
     snap_return = ec2client.create_snapshot(
-        Description='Bulk-snapshot test',
+        Description='Bulk-snapshot (' + volume_owner + ')',
         VolumeId=volume,
         TagSpecifications=[
             {
@@ -47,7 +53,7 @@ for volume in volids_list:
                 'Tags': [
                     {
                         'Key': 'BackupName',
-                        'Value': 'Test'
+                        'Value': 'Bulk Backup'
                     },
                     {
                         'Key': 'Owning Instance',
@@ -62,4 +68,4 @@ for volume in volids_list:
         ]
     )
 
-    print 'Snapshot ' + snap_return['SnapshotId'] + ' started...'
+    print('Snapshot ' + str(snap_return['SnapshotId']) + ' started...')
