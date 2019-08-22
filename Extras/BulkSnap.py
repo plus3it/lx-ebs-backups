@@ -1,19 +1,22 @@
 #!/bin/env python
-import boto3    
+import boto3
+import getopt
+import sys
 
 # Make our connections to the service
 ec2client = boto3.client('ec2')
 ec2resource = boto3.resource('ec2')
 
-# Finda all instances with 'BackMeUp' tag
-filtered_response = ec2client.describe_instances(
-    Filters=[
-            {
-                'Name': 'tag-key',
-                'Values': ['BackMeUp']
-            },
-        ]
-    )
+# How to invoke the script
+def usage():
+    print('Usage: ' + sys.argv[0] + ' [GNU long option] [option] ...')
+    print('  Options:')
+    print('\t-h print this message')
+    print('\t-t <BACKUP_TAG_NAME>')
+    print('  GNU long options:')
+    print('\t--help print this message')
+    print('\t--instance-tag <BACKUP_TAG_NAME>')
+
 
 # Get list of EBS mappings
 def get_dev_maps(blockdev_list = []):
@@ -35,6 +38,46 @@ def get_vol_list(dev_list = [], *args):
 
     return volids_list;
 
+# Check our argument-list
+criteria_str = '" as the instance-tag match-criteria.'
+if len(sys.argv[1:]) == 0:
+    bulk_tag = 'BackMeUp'
+    print('No arguments passed to script: using "' + bulk_tag + criteria_str)
+else:
+    try:
+        optlist, args = getopt.getopt(
+              sys.argv[1:],
+              "t:h",
+              [
+                  "help",
+                  "instance-tag="
+              ]
+           )
+    except getopt.GetoptError as err:
+        # print help information and exit:
+        print str(err)  # will print something like "option -a not recognized"
+        usage()
+        sys.exit(2)
+
+    for opt, arg in optlist:
+       if opt in ("-h", "--help"):
+            usage()
+            sys.exit()
+       elif opt in ( '-t', '--instance-tag='):
+           bulk_tag = arg
+           print('Using "' + bulk_tag + criteria_str)
+       else:
+           assert False, "unhandled option"
+
+# Finda all instances with named-tag
+filtered_response = ec2client.describe_instances(
+    Filters=[
+            {
+                'Name': 'tag-key',
+                'Values': [bulk_tag]
+            },
+        ]
+    )
 
 # Iterate volume-list to create snapshots
 for volume in get_vol_list(get_dev_maps()):
