@@ -1,6 +1,7 @@
 import boto3    
 
 ec2client = boto3.client('ec2')
+ec2resource = boto3.resource('ec2')
 
 # Finda all instances with 'BackMeUp' tag
 filtered_response = ec2client.describe_instances(
@@ -31,6 +32,12 @@ for top in blockdev_list:
 
 # Iterate volume-list to create snapshots
 for volume in volids_list:
+
+    # grab info about volume to be snapped
+    volume_info = ec2resource.Volume(volume).attachments[0]
+    volume_owner = volume_info['InstanceId']
+    volume_dev = volume_info['Device']
+
     snap_return = ec2client.create_snapshot(
         Description='Bulk-snapshot test',
         VolumeId=volume,
@@ -42,8 +49,17 @@ for volume in volids_list:
                         'Key': 'BackupName',
                         'Value': 'Test'
                     },
+                    {
+                        'Key': 'Owning Instance',
+                        'Value': volume_owner
+                    },
+                    {
+                        'Key': 'Instance Attachment',
+                        'Value': volume_dev
+                    },
                 ]
             }
         ]
     )
+
     print 'Snapshot ' + snap_return['SnapshotId'] + ' started...'
