@@ -1,0 +1,118 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "This template sets up the IAM role by snapshot-creation Lambda function",
+    "Parameters": {
+        "LambdaFunctionName": {
+            "Description": "Name of Lambda function to create permissions for",
+            "Type": "String"
+        }
+    },
+    "Resources": {
+        "LambdaPolicy": {
+            "Properties": {
+                "Description": "Policy to provide Lambda function the ability to perform bulk EBS-snapshot backups.",
+                "Path": "/",
+                "PolicyDocument": {
+                    "Statement": [
+                        {
+                            "Action": [
+                                "logs:CreateLogStream",
+                                "logs:PutLogEvents"
+                            ],
+                            "Effect": "Allow",
+                            "Resource": [
+                                {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "arn:aws:logs::",
+                                            {
+                                                "Ref": "AWS::AccountId"
+                                            },
+                                            "log-group:/aws/lambda/",
+                                            {
+                                                "Ref": "LambdaFunctionName"
+                                            },
+                                            ":*"
+                                        ]
+                                    ]
+                                }
+                            ],
+                            "Sid": "LogEvents"
+                        },
+                        {
+                            "Action": [
+                                "ec2:CreateSnapshot",
+                                "ec2:CreateTags",
+                                "ec2:DescribeInstanceAttribute",
+                                "ec2:DescribeInstances",
+                                "ec2:DescribeSnapshotAttribute",
+                                "ec2:DescribeSnapshots",
+                                "ec2:DescribeVolumeAttribute",
+                                "ec2:DescribeVolumes",
+                                "ec2:ModifySnapshotAttribute"
+                            ],
+                            "Effect": "Allow",
+                            "Resource": "*",
+                            "Sid": "EC2permissions"
+                        },
+                        {
+                            "Action": "logs:CreateLogGroup",
+                            "Effect": "Allow",
+                            "Resource": [
+                                {
+                                    "Fn::Join": [
+                                        ":",
+                                        [
+                                            "arn:aws:logs:",
+                                            {
+                                                "Ref": "AWS::AccountId"
+                                            },
+                                            "*"
+                                        ]
+                                    ]
+                                }
+                            ],
+                            "Sid": "CreateLogGroup"
+                        }
+                    ],
+                    "Version": "2012-10-17"
+                },
+                "Roles": [
+                    {
+                        "Ref": "LambdaRole"
+                    }
+                ]
+            },
+            "Type": "AWS::IAM::ManagedPolicy"
+        },
+        "LambdaRole": {
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Statement": [
+                        {
+                            "Action": "sts:AssumeRole",
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": {
+                                    "Fn::Join": [
+                                        ".",
+                                        [
+                                            "lambda",
+                                            {
+                                                "Ref": "AWS::URLSuffix"
+                                            }
+                                        ]
+                                    ]
+                                }
+                            }
+                        }
+                    ],
+                    "Version": "2012-10-17"
+                },
+                "Path": "/"
+            },
+            "Type": "AWS::IAM::Role"
+        }
+    }
+}
