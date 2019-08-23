@@ -9,6 +9,9 @@ def lambda_handler(event, context):
     ec2client = boto3.client('ec2')
     ec2resource = boto3.resource('ec2')
 
+    # Map 'event' as EC2 instance-tag search-string
+    search_tag = event['SearchTag']
+
     try:
         # Get list of EBS mappings
         def get_dev_maps(blockdev_list = []):
