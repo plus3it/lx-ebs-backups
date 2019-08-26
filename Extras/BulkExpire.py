@@ -22,13 +22,6 @@ cmdopts.add_option(
             help="Minumum snapshot-age to expire (default: %default days)"
     )
 cmdopts.add_option(
-        "-s", "--snapshot-size",
-            action="store",
-            type="int",
-            dest="snap_size",
-            help="Exact snapshot-size to match (in GiB)"
-    )
-cmdopts.add_option(
         "-t", "--tag-name",
             action="store",
             type="string",
@@ -48,7 +41,6 @@ cmdopts.add_option(
 # Parse the command options
 (options, args) = cmdopts.parse_args()
 exp_days = options.exp_days
-snap_size = options.snap_size
 tag_key = options.tag_key
 tag_val = options.tag_val
 
