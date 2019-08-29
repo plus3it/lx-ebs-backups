@@ -8,16 +8,17 @@ def lambda_handler(event, context):
     ec2client = boto3.client('ec2')
 
     expire_days = int(event['ExpireDays'])
-    search_key = str(event['SearchKey'])
-    search_val = str(event['SearchVal'])
 
-    ## Supplementation validation of command options
-    # Enforce passing of a search_key value
-    if search_key == '':
-        cmdopts.error("A tag-name must be specified (via -t/--tag-name) for search")
+    # Only use event-value if it's available (otherwise abort)
+    if str(event['SearchKey']):
+        search_key = str(event['SearchKey'])
+    else:
+        sys.exit(1)
 
-    # If we pass a null value, assume safe to search for *any* value
-    if search_val == '':
+    # Only use event-value if it's available.
+    if str(event['SearchVal'])
+        search_val = str(event['SearchVal'])
+    else:
         search_val = '*'
 
     # Do some time-deltas
