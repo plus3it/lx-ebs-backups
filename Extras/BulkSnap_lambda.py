@@ -1,5 +1,4 @@
 import boto3
-import getopt
 import sys
 
 
@@ -12,6 +11,14 @@ def lambda_handler(event, context):
     # Map 'event' as EC2 instance-tag search-string
     search_tag = event['SearchTag']
 
+    # Customize backup-naming of snapshots as appropriate
+    if event['CustomBackupName']:
+        custom_backup_name = event['CustomBackupName']
+    else:
+        custom_backup_name = 'Bulk Backup'
+
+
+    # Wrap it all in a try/except
     try:
         # Get list of EBS mappings
         def get_dev_maps(blockdev_list = []):
@@ -61,7 +68,7 @@ def lambda_handler(event, context):
                         'Tags': [
                             {
                                 'Key': 'BackupName',
-                                'Value': 'Bulk Backup'
+                                'Value': custom_backup_name
                             },
                             {
                                 'Key': 'Owning Instance',
