@@ -1,7 +1,6 @@
 import sys
 import datetime
 import boto3
-import json
 
 #Lambda expects this...
 def lambda_handler(event, context):
