@@ -2,20 +2,15 @@
 import boto3
 import getopt
 import sys
+from optparse import OptionParser
+
 
 # Make our connections to the service
 ec2client = boto3.client('ec2')
 ec2resource = boto3.resource('ec2')
 
-# How to invoke the script
-def usage():
-    print('Usage: ' + sys.argv[0] + ' [GNU long option] [option] ...')
-    print('  Options:')
-    print('\t-h print this message')
-    print('\t-t <BACKUP_TAG_NAME>')
-    print('  GNU long options:')
-    print('\t--help print this message')
-    print('\t--instance-tag <BACKUP_TAG_NAME>')
+# Set defaults
+bulk_tag_value = 'Bulk Backup'
 
 
 # Get list of EBS mappings
@@ -38,42 +33,37 @@ def get_vol_list(dev_list = [], *args):
 
     return volids_list;
 
-# Check our argument-list
-criteria_str = '" as the instance-tag match-criteria.'
-if len(sys.argv[1:]) == 0:
-    bulk_tag = 'BackMeUp'
-    print('No arguments passed to script: using "' + bulk_tag + criteria_str)
-else:
-    try:
-        optlist, args = getopt.getopt(
-              sys.argv[1:],
-              "t:h",
-              [
-                  "help",
-                  "instance-tag="
-              ]
-           )
-    except getopt.GetoptError as err:
-        # print help information and exit:
-        usage()
-        sys.exit(2)
+# Define option-parsing information
+cmdopts = OptionParser()
+cmdopts.add_option(
+        "-t", "--instance-tag-name",
+            action="store",
+            type="string",
+            default="BackMeUp",
+            dest="bulk_tag_name",
+            help="Name of tag to search for (default: %default)"
+    )
+cmdopts.add_option(
+        "-v", "--instance-tag-value",
+            action="store",
+            type="string",
+            default="Bulk Backup",
+            dest="bulk_tag_value",
+            help="Value of 'BackupName' tag to apply to snapshots (default: %default)"
+    )
 
-    for opt, arg in optlist:
-       if opt in ("-h", "--help"):
-            usage()
-            sys.exit()
-       elif opt in ( '-t', '--instance-tag='):
-           bulk_tag = arg
-           print('Using "' + bulk_tag + criteria_str)
-       else:
-           assert False, "unhandled option"
+# Parse the command options
+(options, args) = cmdopts.parse_args()
+bulk_tag_name = options.bulk_tag_name
+bulk_tag_value = options.bulk_tag_value
+
 
 # Finda all instances with named-tag
 filtered_response = ec2client.describe_instances(
     Filters=[
             {
                 'Name': 'tag-key',
-                'Values': [bulk_tag]
+                'Values': [ bulk_tag_name ]
             },
         ]
     )
@@ -95,7 +85,7 @@ for volume in get_vol_list(get_dev_maps()):
                 'Tags': [
                     {
                         'Key': 'BackupName',
-                        'Value': 'Bulk Backup'
+                        'Value': bulk_tag_value
                     },
                     {
                         'Key': 'Owning Instance',
