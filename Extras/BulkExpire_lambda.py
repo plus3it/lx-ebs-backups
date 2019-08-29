@@ -1,36 +1,39 @@
 import sys
 import datetime
 import boto3
+import json
 
 #Lambda expects this...
 def lambda_handler(event, context):
     # Make our connections to the service
     ec2client = boto3.client('ec2')
 
-    expire_days = event['ExpireDays']
-    search_key = event['SearchKey']
-    search_val = event['SearchVal']
+    expire_days = int(event['ExpireDays'])
+    search_key = str(event['SearchKey'])
+
+    # Set value-match for search_key
+    if str(event['SearchVal']):
+        search_val = str(event['SearchVal'])
+    else:
+        search_val = '*'
+
+    ## Supplementation validation of command options
+    # Enforce passing of a search_key value
+    if search_key == '':
+        print("A tag-name must be specified for search")
+        sys.exit(1)
+
+    # Do some time-deltas
+    today = datetime.date.today()
+    datefilter = today - datetime.timedelta(days=expire_days)
+    print('Searching for snapshots older than deletion threshold-date ['
+          +
+          datefilter.strftime("%Y-%m-%d")
+          +
+          ']... '
+    )
 
     try:
-        ## Supplementation validation of command options
-        # Enforce passing of a search_key value
-        if search_key == '':
-            cmdopts.error("A tag-name must be specified (via -t/--tag-name) for search")
-
-        # If we pass a null value, assume safe to search for *any* value
-        if search_val == '':
-            search_val = '*'
-
-        # Do some time-deltas
-        today = datetime.date.today()
-        datefilter = today - datetime.timedelta(days=expire_days)
-        print('Searching for snapshots older than deletion threshold-date ['
-              +
-              datefilter.strftime("%Y-%m-%d")
-              +
-              ']... '
-        )
-
         # Narrow the list of candidate-snapshots by tag-name
         snapshots = ec2client.describe_snapshots(
             Filters=[
@@ -63,7 +66,7 @@ def lambda_handler(event, context):
                     print('Delete succeded')
                 else:
                     print('Delete failed')
-                sys.exit()
+                sys.exit(1)
 
             else:
                 print(
