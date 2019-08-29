@@ -14,7 +14,7 @@
             ]
         }
     },
-    "Description": "This template sets up the IAM role by snapshot-creation Lambda function",
+    "Description": "This template sets up the IAM role used by snapshot-deletion Lambda function",
     "Outputs": {
         "LambdaRoleArn": {
             "Description": "ARN of the instance role",
@@ -93,6 +93,7 @@
                             "Action": [
                                 "ec2:CreateSnapshot",
                                 "ec2:CreateTags",
+                                "ec2:DeleteSnapshot",
                                 "ec2:DescribeInstanceAttribute",
                                 "ec2:DescribeInstances",
                                 "ec2:DescribeSnapshotAttribute",
