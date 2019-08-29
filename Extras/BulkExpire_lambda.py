@@ -29,7 +29,8 @@ def lambda_handler(event, context):
           +
           datefilter.strftime("%Y-%m-%d")
           +
-          ']... ')
+          ']... '
+          )
 
     try:
         # Narrow the list of candidate-snapshots by tag-name
