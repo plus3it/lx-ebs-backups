@@ -16,7 +16,7 @@ def lambda_handler(event, context):
         sys.exit(1)
 
     # Only use event-value if it's available.
-    if str(event['SearchVal'])
+    if str(event['SearchVal']):
         search_val = str(event['SearchVal'])
     else:
         search_val = '*'
