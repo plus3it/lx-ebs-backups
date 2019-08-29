@@ -71,3 +71,4 @@ def lambda_handler(event, context):
                     'Snapshot %s created %s is not %s days old or older: keeping' %
                     (snap_id, snap_created.strftime('%Y-%m-%d'), expire_days)
                 )
+
