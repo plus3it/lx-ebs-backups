@@ -166,7 +166,7 @@
                         "PrettyRole",
                         {
                             "Fn::Join": [
-                                "-",
+                                "_",
                                 [
                                     {
                                         "Ref": "RolePrefix"
