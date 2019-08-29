@@ -26,11 +26,10 @@ def lambda_handler(event, context):
     today = datetime.date.today()
     datefilter = today - datetime.timedelta(days=expire_days)
     print('Searching for snapshots older than deletion threshold-date ['
-        +
-        datefilter.strftime("%Y-%m-%d")
-        +
-        ']... '
-    )
+          +
+          datefilter.strftime("%Y-%m-%d")
+          +
+          ']... ')
 
     try:
         # Narrow the list of candidate-snapshots by tag-name
