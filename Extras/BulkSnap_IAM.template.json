@@ -1,9 +1,54 @@
 {
     "AWSTemplateFormatVersion": "2010-09-09",
+    "Conditions": {
+        "PrettyRole": {
+            "Fn::Not": [
+                {
+                    "Fn::Equals": [
+                        {
+                            "Ref": "RolePrefix"
+                        },
+                        ""
+                    ]
+                }
+            ]
+        }
+    },
     "Description": "This template sets up the IAM role by snapshot-creation Lambda function",
+    "Outputs": {
+        "LambdaRoleArn": {
+            "Description": "ARN of the instance role",
+            "Export": {
+                "Name": {
+                    "Fn::Sub": "${AWS::StackName}-LambdaRoleArn"
+                }
+            },
+            "Value": {
+                "Fn::GetAtt": [
+                    "LambdaRole",
+                    "Arn"
+                ]
+            }
+        },
+        "LambdaRoleName": {
+            "Description": "Name of the instance role",
+            "Export": {
+                "Name": {
+                    "Fn::Sub": "${AWS::StackName}-LambdaRoleName"
+                }
+            },
+            "Value": {
+                "Ref": "LambdaRole"
+            }
+        }
+    },
     "Parameters": {
         "LambdaFunctionName": {
             "Description": "Name of Lambda function to create permissions for",
+            "Type": "String"
+        },
+        "RolePrefix": {
+            "Description": "Prefix to apply to IAM role to make things a bit prettier (optional).",
             "Type": "String"
         }
     },
@@ -114,7 +159,28 @@
                     ],
                     "Version": "2012-10-17"
                 },
-                "Path": "/"
+                "Path": "/",
+                "RoleName": {
+                    "Fn::If": [
+                        "PrettyRole",
+                        {
+                            "Fn::Join": [
+                                "_",
+                                [
+                                    {
+                                        "Ref": "RolePrefix"
+                                    },
+                                    {
+                                        "Ref": "AWS::StackName"
+                                    }
+                                ]
+                            ]
+                        },
+                        {
+                            "Ref": "AWS::NoValue"
+                        }
+                    ]
+                }
             },
             "Type": "AWS::IAM::Role"
         }
