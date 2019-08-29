@@ -9,18 +9,16 @@ def lambda_handler(event, context):
 
     expire_days = int(event['ExpireDays'])
     search_key = str(event['SearchKey'])
-
-    # Set value-match for search_key
-    if str(event['SearchVal']):
-        search_val = str(event['SearchVal'])
-    else:
-        search_val = '*'
+    search_val = str(event['SearchVal'])
 
     ## Supplementation validation of command options
     # Enforce passing of a search_key value
     if search_key == '':
-        print("A tag-name must be specified for search")
-        sys.exit(1)
+        cmdopts.error("A tag-name must be specified (via -t/--tag-name) for search")
+
+    # If we pass a null value, assume safe to search for *any* value
+    if search_val == '':
+        search_val = '*'
 
     # Do some time-deltas
     today = datetime.date.today()
@@ -30,7 +28,7 @@ def lambda_handler(event, context):
           datefilter.strftime("%Y-%m-%d")
           +
           ']... '
-          )
+    )
 
     try:
         # Narrow the list of candidate-snapshots by tag-name
@@ -65,7 +63,7 @@ def lambda_handler(event, context):
                     print('Delete succeded')
                 else:
                     print('Delete failed')
-                sys.exit(1)
+                    sys.exit(1)
 
             else:
                 print(
@@ -73,3 +71,5 @@ def lambda_handler(event, context):
                     (snap_id, snap_created.strftime('%Y-%m-%d'), expire_days)
                 )
 
+    except:
+        print('Script-error encountered')
