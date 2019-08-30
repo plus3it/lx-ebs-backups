@@ -60,52 +60,6 @@
                 "PolicyDocument": {
                     "Statement": [
                         {
-                            "Action": [
-                                "logs:CreateLogStream",
-                                "logs:PutLogEvents"
-                            ],
-                            "Effect": "Allow",
-                            "Resource": [
-                                {
-                                    "Fn::Join": [
-                                        "",
-                                        [
-                                            "arn:aws:logs:",
-                                            {
-                                                "Ref": "AWS::Region"
-                                            },
-                                            ":",
-                                            {
-                                                "Ref": "AWS::AccountId"
-                                            },
-                                            ":log-group:/aws/lambda/",
-                                            {
-                                                "Ref": "LambdaFunctionName"
-                                            },
-                                            "*:*"
-                                        ]
-                                    ]
-                                }
-                            ],
-                            "Sid": "LogEvents"
-                        },
-                        {
-                            "Action": [
-                                "ec2:CreateSnapshot",
-                                "ec2:CreateTags",
-                                "ec2:DescribeInstanceAttribute",
-                                "ec2:DescribeInstances",
-                                "ec2:DescribeSnapshotAttribute",
-                                "ec2:DescribeSnapshots",
-                                "ec2:DescribeVolumeAttribute",
-                                "ec2:DescribeVolumes",
-                                "ec2:ModifySnapshotAttribute"
-                            ],
-                            "Effect": "Allow",
-                            "Resource": "*",
-                            "Sid": "EC2permissions"
-                        },
-                        {
                             "Action": "logs:CreateLogGroup",
                             "Effect": "Allow",
                             "Resource": {
@@ -129,6 +83,54 @@
                                 ]
                             },
                             "Sid": "CreateLogGroup"
+                        },
+                        {
+                            "Action": [
+                                "logs:CreateLogStream",
+                                "logs:PutLogEvents"
+                            ],
+                            "Effect": "Allow",
+                            "Resource": {
+                                "Fn::Join": [
+                                    "",
+                                    [
+                                        "arn:",
+                                        {
+                                            "Ref": "AWS::Partition"
+                                        },
+                                        ":logs:",
+                                        {
+                                            "Ref": "AWS::Region"
+                                        },
+                                        ":",
+                                        {
+                                            "Ref": "AWS::AccountId"
+                                        },
+                                        ":log-group:/aws/lambda/",
+                                        {
+                                            "Ref": "LambdaFunctionName"
+                                        },
+                                        "*:*"
+                                    ]
+                                ]
+                            },
+                            "Sid": "PutLogs"
+                        },
+                        {
+                            "Action": [
+                                "ec2:CreateSnapshot",
+                                "ec2:CreateTags",
+                                "ec2:DescribeInstanceAttribute",
+                                "ec2:DescribeInstances",
+                                "ec2:DescribeSnapshotAttribute",
+                                "ec2:DescribeSnapshots",
+                                "ec2:DescribeVolumeAttribute",
+                                "ec2:DescribeVolumes",
+                                "ec2:ModifySnapshotAttribute"
+                            ],
+                            "Effect": "Allow",
+                            "Resource": "*",
+                            "Sid": "EC2permissions"
                         }
                     ],
                     "Version": "2012-10-17"
