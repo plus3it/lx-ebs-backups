@@ -46,7 +46,7 @@ def lambda_handler(event, context):
             Filters=[
                     {
                         'Name': 'tag-key',
-                        'Values': [ 'BackMeUp', 'BulkBackup' ]
+                        'Values': [ 'BackMeUp', 'BulkBackup', search_tag ]
                     },
                 ]
             )
