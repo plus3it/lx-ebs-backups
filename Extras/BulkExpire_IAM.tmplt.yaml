@@ -65,12 +65,15 @@ Resources:
             Sid: EC2permissions
           - Action: 'logs:CreateLogGroup'
             Effect: Allow
-            Resource:
-              - !Join 
+            Resource: !Join 
+              - ''
+              - - 'arn:'
+                - !Ref 'AWS::Partition'
+                - ':logs:'
+                - !Ref 'AWS::Region'
                 - ':'
-                - - 'arn:aws:logs:'
-                  - !Ref 'AWS::AccountId'
-                  - '*'
+                - !Ref 'AWS::AccountId'
+                - ':*'
             Sid: CreateLogGroup
         Version: 2012-10-17
       Roles:
