@@ -47,7 +47,7 @@ Resources:
                   - !Ref 'AWS::AccountId'
                   - ':log-group:/aws/lambda/'
                   - !Ref LambdaFunctionName
-                  - ':*'
+                  - '*:*'
             Sid: LogEvents
           - Action:
               - 'ec2:CreateSnapshot'
