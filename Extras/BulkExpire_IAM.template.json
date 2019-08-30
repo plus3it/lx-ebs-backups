@@ -109,20 +109,26 @@
                         {
                             "Action": "logs:CreateLogGroup",
                             "Effect": "Allow",
-                            "Resource": [
-                                {
-                                    "Fn::Join": [
+                            "Resource": {
+                                "Fn::Join": [
+                                    "",
+                                    [
+                                        "arn:",
+                                        {
+                                            "Ref": "AWS::Partition"
+                                        },
+                                        ":logs:",
+                                        {
+                                            "Ref": "AWS::Region"
+                                        },
                                         ":",
-                                        [
-                                            "arn:aws:logs:",
-                                            {
-                                                "Ref": "AWS::AccountId"
-                                            },
-                                            "*"
-                                        ]
+                                        {
+                                            "Ref": "AWS::AccountId"
+                                        },
+                                        ":*"
                                     ]
-                                }
-                            ],
+                                ]
+                            },
                             "Sid": "CreateLogGroup"
                         }
                     ],
