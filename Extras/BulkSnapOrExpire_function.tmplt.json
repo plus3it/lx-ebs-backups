@@ -1,0 +1,69 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Conditions": {},
+    "Description": "This template deploys a Lambda function to perform bulk snapshot creation or deletion.",
+    "Outputs": {
+        "FunctionArn": {
+            "Description": "ARN of the Lambda function",
+            "Export": {
+                "Name": {
+                    "Fn::Sub": "${AWS::StackName}-FunctionArn"
+                }
+            },
+            "Value": {
+                "Fn::GetAtt": [
+                    "SnapOrExpire",
+                    "Arn"
+                ]
+            }
+        },
+        "FunctionName": {
+            "Description": "Name of the Lambda funtion",
+            "Export": {
+                "Name": {
+                    "Fn::Sub": "${AWS::StackName}-FunctionName"
+                }
+            },
+            "Value": {
+                "Ref": "SnapOrExpire"
+            }
+        }
+    },
+    "Parameters": {
+        "DeploymentPackageBucket": {
+            "AllowedPattern": "^[a-z][a-z0-9-]*[a-z0-9]*$|^$",
+            "Description": "Name of the S3 Bucket hosting the function's deployment package",
+            "Type": "String"
+        },
+        "DeploymentPackageFilePath": {
+            "Description": "Key-name (path) of the function's S3-hosted deployment package",
+            "Type": "String"
+        },
+        "ExecutionRoleArn": {
+            "AllowedPattern": "arn:(aws[a-zA-Z-]*)?:iam::\\d{12}:role/?[a-zA-Z_0-9+=,.@\\-_/]+",
+            "Description": "The Amazon Resource Name (ARN) of the function's execution role",
+            "Type": "String"
+        }
+    },
+    "Resources": {
+        "SnapOrExpire": {
+            "Properties": {
+                "Code": {
+                    "S3Bucket": {
+                        "Ref": "DeploymentPackageBucket"
+                    },
+                    "S3Key": {
+                        "Ref": "DeploymentPackageFilePath"
+                    }
+                },
+                "Handler": "lambda_function.lambda_handler",
+                "Role": {
+                    "Ref": "ExecutionRoleArn"
+                },
+                "Runtime": "python3.6",
+                "Timeout": 120
+            },
+            "Type": "AWS::Lambda::Function"
+        }
+    }
+}
