@@ -30,6 +30,22 @@
         }
     },
     "Resources": {
+        "SchedulePermission": {
+            "Properties": {
+                "Action": "lambda:InvokeFunction",
+                "FunctionName": {
+                    "Ref": "FunctionName"
+                },
+                "Principal": "events.amazonaws.com",
+                "SourceArn": {
+                    "Fn::GetAtt": [
+                        "ScheduledRule",
+                        "Arn"
+                    ]
+                }
+            },
+            "Type": "AWS::Lambda::Permission"
+        },
         "ScheduledRule": {
             "Properties": {
                 "Description": "ScheduledRule",
