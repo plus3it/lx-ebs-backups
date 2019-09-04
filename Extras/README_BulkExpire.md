@@ -23,3 +23,6 @@ Any EBS snapshot that was created the specified number of days previously (or ea
     ~~~
 
 * `BulkExpire_IAM.template.json`: A simple CloudFormation template to set up the requisite IAM role to provide the bare-minimum permisions for the Lambda function to operate.
+* `BulkSnapOrExpire_function.tmplt.json`: A simple CloudFormation template to set up the Lambda function to perform backup-expiry tasks.
+* `BulkExpire-CWrule.tmplt.json`: A simple CloudFormation template to set up the CloudWatch event-rule to trigger the backup-expiry Lambda function on a regular basis.
+* `BulkExpire-parent.tmplt.json`: A parent template that wraps all the prior templates as children in a singly-deployable stack-set.

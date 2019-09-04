@@ -17,4 +17,7 @@ The following are meant to facilitate performing "bulk" EBS snapshot operations.
 
     Any EC2s tagged with `<BACKUP_TAG_NAME>` bill be included in the scheduled bulk-backup operation.
 * `BulkSnap_IAM.template.json`: A simple CloudFormation template to set up the requisite IAM role to provide the bare-minimum permisions for the Lambda function to operate.
+* `BulkSnapOrExpire_function.tmplt.json`: A simple CloudFormation template to set up the Lambda function to perform backup-actions.
+* `BulkSnap-CWrule.tmplt.json`: A simple CloudFormation template to set up the CloudWatch event-rule to trigger the backup Lambda function on a regular basis.
+* `BulkSnap-parent.tmplt.json`: A parent template that wraps all the prior templates as children in a singly-deployable stack-set.
 
