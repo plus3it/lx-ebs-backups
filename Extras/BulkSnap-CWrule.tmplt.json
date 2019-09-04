@@ -1,0 +1,93 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Conditions": {},
+    "Description": "Template for deploying a CloudWatch (cron) event to drive bulk-snapshot Lambda function.",
+    "Outputs": {},
+    "Parameters": {
+        "FunctionName": {
+            "Description": "Name of the Lambda function to create scheduled event for.",
+            "Type": "String"
+        },
+        "ScheduleExpression": {
+            "Default": "30 * * * ? *",
+            "Description": "Cron-style schedule-expression: six fields",
+            "Type": "String"
+        },
+        "SearchTag": {
+            "Description": "Name of the EC2 tag to search for: all EC2s with this tag present will be snapshotted",
+            "Type": "String"
+        },
+        "SnapTags": {
+            "Default": "Bulk Backup",
+            "Description": "Tag-value to apply to bulk-snapshots",
+            "Type": "String"
+        }
+    },
+    "Resources": {
+        "ScheduledRule": {
+            "Properties": {
+                "Description": "ScheduledRule",
+                "ScheduleExpression": {
+                    "Fn::Join": [
+                        "",
+                        [
+                            "cron(",
+                            {
+                                "Ref": "ScheduleExpression"
+                            },
+                            ")"
+                        ]
+                    ]
+                },
+                "State": "ENABLED",
+                "Targets": [
+                    {
+                        "Arn": {
+                            "Fn::Join": [
+                                "",
+                                [
+                                    "arn:",
+                                    {
+                                        "Ref": "AWS::Partition"
+                                    },
+                                    ":lambda:",
+                                    {
+                                        "Ref": "AWS::Region"
+                                    },
+                                    ":",
+                                    {
+                                        "Ref": "AWS::AccountId"
+                                    },
+                                    ":function:",
+                                    {
+                                        "Ref": "FunctionName"
+                                    }
+                                ]
+                            ]
+                        },
+                        "Id": "FunctionTarget",
+                        "Input": {
+                            "Fn::Join": [
+                                "",
+                                [
+                                    "{ \"SearchTag\": \"",
+                                    {
+                                        "Ref": "SearchTag"
+                                    },
+                                    "\"",
+                                    ", \"CustomBackupName\": \"",
+                                    {
+                                        "Ref": "SnapTags"
+                                    },
+                                    "\"",
+                                    "}"
+                                ]
+                            ]
+                        }
+                    }
+                ]
+            },
+            "Type": "AWS::Events::Rule"
+        }
+    }
+}

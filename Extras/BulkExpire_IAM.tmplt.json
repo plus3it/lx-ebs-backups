@@ -14,7 +14,7 @@
             ]
         }
     },
-    "Description": "This template sets up the IAM role by snapshot-creation Lambda function",
+    "Description": "This template sets up the IAM role used by snapshot-deletion Lambda function",
     "Outputs": {
         "LambdaRoleArn": {
             "Description": "ARN of the instance role",
@@ -82,7 +82,7 @@
                                             {
                                                 "Ref": "LambdaFunctionName"
                                             },
-                                            ":*"
+                                            "*:*"
                                         ]
                                     ]
                                 }
@@ -93,6 +93,7 @@
                             "Action": [
                                 "ec2:CreateSnapshot",
                                 "ec2:CreateTags",
+                                "ec2:DeleteSnapshot",
                                 "ec2:DescribeInstanceAttribute",
                                 "ec2:DescribeInstances",
                                 "ec2:DescribeSnapshotAttribute",
@@ -108,20 +109,26 @@
                         {
                             "Action": "logs:CreateLogGroup",
                             "Effect": "Allow",
-                            "Resource": [
-                                {
-                                    "Fn::Join": [
+                            "Resource": {
+                                "Fn::Join": [
+                                    "",
+                                    [
+                                        "arn:",
+                                        {
+                                            "Ref": "AWS::Partition"
+                                        },
+                                        ":logs:",
+                                        {
+                                            "Ref": "AWS::Region"
+                                        },
                                         ":",
-                                        [
-                                            "arn:aws:logs:",
-                                            {
-                                                "Ref": "AWS::AccountId"
-                                            },
-                                            "*"
-                                        ]
+                                        {
+                                            "Ref": "AWS::AccountId"
+                                        },
+                                        ":*"
                                     ]
-                                }
-                            ],
+                                ]
+                            },
                             "Sid": "CreateLogGroup"
                         }
                     ],
