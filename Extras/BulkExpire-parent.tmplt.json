@@ -1,0 +1,168 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "This template coordinates the running of IAM, Lambda and CW Event-rule templates to create a Lambda function for performing bulk EBS-snapshot expiries.",
+    "Metadata": {
+        "AWS::CloudFormation::Interface": {
+            "ParameterGroups": [
+                {
+                    "Label": {
+                        "default": "Execution-Role Parameters"
+                    },
+                    "Parameters": [
+                        "RolePrefix"
+                    ]
+                },
+                {
+                    "Label": {
+                        "default": "Lamda Parameters"
+                    },
+                    "Parameters": [
+                        "DeploymentPackageBucket",
+                        "DeploymentPackageFilePath",
+                        "ExpiryAge",
+                        "SearchTag",
+                        "SearchValue"
+                    ]
+                },
+                {
+                    "Label": {
+                        "default": "Event Parameters"
+                    },
+                    "Parameters": [
+                        "ScheduleExpression"
+                    ]
+                },
+                {
+                    "Label": {
+                        "default": "Child Templates"
+                    },
+                    "Parameters": [
+                        "IamTemplateUrl",
+                        "FunctionTemplateUrl",
+                        "CwEventRuleTemplateUrl"
+                    ]
+                }
+            ]
+        }
+    },
+    "Parameters": {
+        "CwEventRuleTemplateUrl": {
+            "AllowedPattern": "^$|^http://.*$|^https://.*$",
+            "Description": "URL to the child-template for creating the CloudWatch Event-Rule",
+            "Type": "String"
+        },
+        "DeploymentPackageBucket": {
+            "AllowedPattern": "^[a-z][a-z0-9-]*[a-z0-9]*$|^$",
+            "Description": "Name of the S3 Bucket hosting the function's deployment package",
+            "Type": "String"
+        },
+        "DeploymentPackageFilePath": {
+            "Description": "Key-name (path) of the function's S3-hosted deployment package",
+            "Type": "String"
+        },
+        "ExpiryAge": {
+            "Default": 14,
+            "Description": "Age in days beyond which bulk EBS snapshots should be expired",
+            "Type": "Number"
+        },
+        "FunctionTemplateUrl": {
+            "AllowedPattern": "^$|^http://.*$|^https://.*$",
+            "Description": "URL to the child-template for creating the Lambda function",
+            "Type": "String"
+        },
+        "IamTemplateUrl": {
+            "AllowedPattern": "^$|^http://.*$|^https://.*$",
+            "Description": "URL to the child-template for creating the Lambda function's (IAM) execution-role",
+            "Type": "String"
+        },
+        "RolePrefix": {
+            "Description": "Prefix to apply to IAM role to make things a bit prettier (optional).",
+            "Type": "String"
+        },
+        "ScheduleExpression": {
+            "Default": "30 * * * ? *",
+            "Description": "Cron-style schedule-expression: six fields",
+            "Type": "String"
+        },
+        "SearchTag": {
+            "Description": "Name of the EC2 tag to search for: all EC2s with this tag present will be snapshotted",
+            "Type": "String"
+        },
+        "SearchValue": {
+            "Default": "Bulk Snap",
+            "Description": "Value applied via `SearchTag` to EBS snapshots to search for",
+            "Type": "String"
+        }
+    },
+    "Resources": {
+        "LambdaFunctionRes": {
+            "Properties": {
+                "Parameters": {
+                    "DeploymentPackageBucket": {
+                        "Ref": "DeploymentPackageBucket"
+                    },
+                    "DeploymentPackageFilePath": {
+                        "Ref": "DeploymentPackageFilePath"
+                    },
+                    "ExecutionRoleArn": {
+                        "Fn::GetAtt": [
+                            "LambdaIamRes",
+                            "Outputs.LambdaRoleArn"
+                        ]
+                    }
+                },
+                "TemplateURL": {
+                    "Ref": "FunctionTemplateUrl"
+                },
+                "TimeoutInMinutes": 10
+            },
+            "Type": "AWS::CloudFormation::Stack"
+        },
+        "LambdaIamRes": {
+            "Properties": {
+                "Parameters": {
+                    "LambdaFunctionName": {
+                        "Fn::Sub": "${AWS::StackName}"
+                    },
+                    "RolePrefix": {
+                        "Ref": "RolePrefix"
+                    }
+                },
+                "TemplateURL": {
+                    "Ref": "IamTemplateUrl"
+                },
+                "TimeoutInMinutes": 10
+            },
+            "Type": "AWS::CloudFormation::Stack"
+        },
+        "LambdaTriggerRes": {
+            "Properties": {
+                "Parameters": {
+                    "ExpiryAge": {
+                        "Ref": "ExpiryAge"
+                    },
+                    "FunctionName": {
+                        "Fn::GetAtt": [
+                            "LambdaFunctionRes",
+                            "Outputs.FunctionName"
+                        ]
+                    },
+                    "ScheduleExpression": {
+                        "Ref": "ScheduleExpression"
+                    },
+                    "SearchTag": {
+                        "Ref": "SearchTag"
+                    },
+                    "SearchValue": {
+                        "Ref": "SearchValue"
+                    }
+                },
+                "TemplateURL": {
+                    "Ref": "CwEventRuleTemplateUrl"
+                },
+                "TimeoutInMinutes": 10
+            },
+            "Type": "AWS::CloudFormation::Stack"
+        }
+    }
+}
