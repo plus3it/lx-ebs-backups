@@ -41,10 +41,17 @@ cmdopts.add_option(
             type="string"
     )
 cmdopts.add_option(
-        "-s", "--search-string",
+        "-S", "--search-string",
             action="store",
             dest="search_string",
             help="String-value to search for (use commas to search for more than one string-value)",
+            type="string"
+    )
+cmdopts.add_option(
+        "-s", "--deployment-subnet",
+            action="store",
+            dest="deployment_subnet",
+            help="Subnet ID to deploy recovery-instance into",
             type="string"
     )
 cmdopts.add_option(
@@ -69,8 +76,36 @@ amiId = options.recovery_ami_id
 ebsType  = options.ebs_volume_type
 ec2Az = options.availability_zone
 ec2Label  = options.recovery_hostname
+ec2Subnet = options.deployment_subnet
 ec2Type = options.recovery_instance_type
 rescueKey  = options.provisioning_key
 snapSearchVal = options.search_string
 
 
+launchResponseJson = ec2client.run_instances(
+    ImageId=amiId,
+    InstanceType=ec2Type,
+    KeyName=rescueKey,
+    MaxCount=1,
+    MinCount=1,
+    NetworkInterfaces=[
+        {
+            'DeviceIndex': 0,
+            'SubnetId': ec2Subnet
+        }
+    ],
+    Placement={
+        'AvailabilityZone': ec2Az
+    },
+    TagSpecifications=[
+        {
+            'ResourceType': 'instance',
+            'Tags': [
+                {
+                    'Key': 'Name',
+                    'Value': ec2Label
+                }
+            ]
+        }
+    ]
+)
