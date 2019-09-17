@@ -5,8 +5,8 @@ import sys
 import time
 from optparse import OptionParser
 
-# Create initial recovery instance
-def mkRecovInst( amiId, ec2Type, provKey, ec2Snet, ec2Az, ec2Label):
+# Create initial recovery-instance
+def mkRecovInst(amiId, ec2Type, provKey, ec2Snet, ec2Az, ec2Label):
     launchResponseJson = ec2client.run_instances(
         ImageId=amiId,
         InstanceType=ec2Type,
@@ -37,19 +37,39 @@ def mkRecovInst( amiId, ec2Type, provKey, ec2Snet, ec2Az, ec2Label):
 
     return launchResponseJson
 
-# Check recovery-instance's state
-def chkInstState(instanceId):
-    instanceInfo = ec2client.describe_instance_status(
+# Stop recovery-instance
+def stopRecovInst(instanceId):
+    print('Requesting stop of ' + instanceId + '... ', end = '')
+
+    instanceInfo = ec2client.stop_instances(
         InstanceIds=[
             instanceId,
         ],
     )
 
-    if ( instanceInfo.get('InstanceStatuses') ):
-##         currentState = instanceInfo.get('InstanceStatuses')[0].get('InstanceState').get('Name')
-        currentState = instanceInfo.get('InstanceStatuses')[0].get('InstanceStatus').get('Status')
+    return
+
+# Check recovery-instance's state
+def chkInstState(instanceId):
+    instanceStatus = ec2client.describe_instance_status(
+                         InstanceIds=[
+                             instanceId
+                         ]
+                     )
+    instanceInfo =  ec2client.describe_instances(
+                        InstanceIds=[
+                            instanceId
+                        ]
+                    )
+    instanceState = instanceInfo['Reservations'][0]['Instances'][0]['State']['Name']
+
+    if ( instanceState == 'running' ):
+        if ( instanceStatus.get('InstanceStatuses')[0].get('InstanceStatus').get('Status') ):
+            currentState = instanceStatus.get('InstanceStatuses')[0].get('InstanceStatus').get('Status')
+        else:
+            currentState = 'TRANSITIONING'
     else:
-        currentState = 'NOT_READY'
+        currentState = instanceState
 
 
     print(currentState)
@@ -132,13 +152,27 @@ ec2Type = options.recovery_instance_type
 provKey  = options.provisioning_key
 snapSearchVal = options.search_string
 
+# Start recovery-instance and extract requisite data-points from process
 recoveryHost = mkRecovInst(amiId, ec2Type, provKey, ec2Snet, ec2Az, ec2Label)
 recoveryHostInstanceStruct = recoveryHost.get('Instances', None)
 recoveryHostState = recoveryHostInstanceStruct[0].get('State', None).get('Code', None)
 recoveryHostInstanceId = recoveryHostInstanceStruct[0].get('InstanceId', None)
 
-print('Instance ID: ' + recoveryHostInstanceId )
+# Printout recvoery-instance ID
+print('Launched instance (' + recoveryHostInstanceId + '): ', end = '')
 
+# Wait for it to come to desired initial state
 while ( chkInstState(recoveryHostInstanceId) != 'ok' ):
-    print('Waiting for ' + recoveryHostInstanceId + 'to come online... ', end = '')
-    time.sleep(10)
+    time.sleep(5)
+    print('Waiting for ' + recoveryHostInstanceId + ' to come online... ', end = '')
+    time.sleep(5)
+
+# Issue stop-request
+stopRecovInst(recoveryHostInstanceId)
+
+# Wait for instance to stop
+while ( chkInstState(recoveryHostInstanceId) != 'stopped' ):
+    time.sleep(5)
+    print('Waiting for ' + recoveryHostInstanceId + ' to stop... ', end = '')
+    time.sleep(5)
+
