@@ -90,7 +90,7 @@ for volume in get_vol_list(get_dev_maps()):
                 'Tags': [
                     {
                         'Key': 'Created By',
-                        'Value': scriptUser
+                        'Value': scriptUser.split(':', 5)[-1]
                     },
                     {
                         'Key': 'Name',
