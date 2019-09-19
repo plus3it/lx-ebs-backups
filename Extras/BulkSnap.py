@@ -1,5 +1,6 @@
 #!/bin/env python
 import boto3
+import datetime
 import getopt
 import sys
 from optparse import OptionParser
@@ -12,6 +13,7 @@ scriptUser = boto3.client('sts').get_caller_identity()['Arn']
 
 # Set defaults
 bulk_tag_value = 'Bulk Backup'
+scriptDate = datetime.datetime.now().strftime('%Y%m%d')
 
 
 # Get list of EBS mappings
@@ -82,7 +84,7 @@ for volume in get_vol_list(get_dev_maps()):
     instance_az = instance_info['Placement']['AvailabilityZone']
 
     snap_return = ec2client.create_snapshot(
-        Description='Bulk-snapshot (' + volume_owner + ')',
+        Description = volume_owner + '-BulkSnap-' + scriptDate,
         VolumeId=volume,
         TagSpecifications=[
             {
