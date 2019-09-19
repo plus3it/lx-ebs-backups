@@ -1,4 +1,5 @@
 import boto3
+import datetime
 import sys
 
 
@@ -7,6 +8,10 @@ def lambda_handler(event, context):
     # Make our connections to the service
     ec2client = boto3.client('ec2')
     ec2resource = boto3.resource('ec2')
+    scriptUser = boto3.client('sts').get_caller_identity()['Arn']
+
+    # Set some key var-vals
+    scriptDate = datetime.datetime.now().strftime('%Y%m%d')
 
     # Map 'event' as EC2 instance-tag search-string
     search_tag = event['SearchTag']
@@ -59,28 +64,48 @@ def lambda_handler(event, context):
             volume_owner = volume_info['InstanceId']
             volume_dev = volume_info['Device']
 
+            # Grab EC2 association for original volume
+            instance_info = ec2client.describe_instances( InstanceIds=[ volume_owner ])['Reservations'][0]['Instances'][0]
+            instance_az = instance_info['Placement']['AvailabilityZone']
+
             snap_return = ec2client.create_snapshot(
-                Description='Bulk-snapshot (' + volume_owner + ')',
-                VolumeId=volume,
+                Description = volume_owner + '-BulkSnap-' + scriptDate,
+                VolumeId = volume,
                 TagSpecifications=[
+            {
+                'ResourceType': 'snapshot',
+                'Tags': [
                     {
-                        'ResourceType': 'snapshot',
-                        'Tags': [
-                            {
-                                'Key': 'BackupName',
-                                'Value': custom_backup_name
-                            },
-                            {
-                                'Key': 'Owning Instance',
-                                'Value': volume_owner
-                            },
-                            {
-                                'Key': 'Instance Attachment',
-                                'Value': volume_dev
-                            },
-                        ]
-                    }
+                        'Key': 'Created By',
+                        'Value': scriptUser.split(':', 5)[-1]
+                    },
+                    {
+                        'Key': 'Name',
+                        'Value': custom_backup_name
+                    },
+                    {
+                        'Key': 'Original Attachment',
+                        'Value': volume_dev
+                    },
+                    {
+                        'Key': 'Original AZ',
+                        'Value': instance_az
+                    },
+                    {
+                        'Key': 'Original Hostname',
+                        'Value': 'NOT AVAILABLE'
+                    },
+                    {
+                        'Key': 'Original Instance',
+                        'Value': volume_owner
+                    },
+                    {
+                        'Key': 'Snapshot Group',
+                        'Value': 'Bulk'
+                    },
                 ]
+            }
+        ]
             )
 
             print('Snapshot ' + str(snap_return['SnapshotId']) + ' started...')
