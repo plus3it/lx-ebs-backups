@@ -18,7 +18,9 @@ PATH=/sbin:/usr/sbin:/bin:/usr/bin:/opt/AWScli/bin
 PROGNAME="$( basename "${BASH_SOURCE[0]}" )"
 PROGDIR="$( dirname "${BASH_SOURCE[0]}" )"
 BACKOFFSECS=$(( RANDOM % 300 ))
-BKNAME="$(hostname -s)_${THISINSTID}-bkup-${DATESTMP}"
+DATESTMP="$( date '+%Y%m%d%H%M' )"
+THISINSTID="$( curl -sL http://169.254.169.254/latest/meta-data/instance-id/ )"
+BKNAME="${THISINSTID}-bkup-${DATESTMP}"
 FIFO="/tmp/.EBSfifo.$( dd if=/dev/urandom | tr -dc 'a-zA-Z0-9' | \
                        fold -w 10 | head -n 1
                      )"
