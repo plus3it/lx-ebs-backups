@@ -40,7 +40,7 @@ def mkRecovInst(amiId, ec2Type, provKey, ec2Snet, ec2Az, ec2Label):
 
 # Stop recovery-instance
 def stopRecovInst(instanceId):
-    print('Requesting stop of ' + instanceId + '... ', end = '')
+    print('\nRequesting stop of ' + instanceId + '... ', end = '')
 
     instanceInfo = ec2client.stop_instances(
         InstanceIds=[
@@ -111,6 +111,62 @@ def snapTagsToAttribs(snapSearchVal):
     return snapReturn
 
 
+# Reconstitute EBSes from snapshots
+def snapsToEbses(buildAz,ebsType,snapAttribs):
+
+    ebsList = []
+
+    # Iterate over snapshot-list
+    for snapshot in snapAttribs:
+        # Get useful info from snapshot's data
+        origInstance = snapAttribs[snapshot]['Original Instance']
+        origAttach = snapAttribs[snapshot]['Original Attachment']
+
+        # Let user know what we're doing
+        print('Creating ' + ebsType + ' volume from ' + snapshot + '... ', end='')
+
+        # Create the volume
+        newVolInfo = ec2client.create_volume(
+                AvailabilityZone=buildAz,
+                SnapshotId=snapshot,
+                VolumeType=ebsType,
+                TagSpecifications=[
+                    {
+                        'ResourceType': 'volume',
+                        'Tags': [
+                            {
+                                'Key': 'Original Instance',
+                                'Value': origInstance
+                            },
+                            {
+                                'Key': 'Original Attachment',
+                                'Value': origAttach
+                            },
+                        ]
+                    },
+                ]
+            )
+
+        print(newVolInfo['VolumeId'])
+        ebsList.append(newVolInfo)
+
+##    print(ebsList)
+    return ebsList
+
+
+# Reconstitute EBSes from snapshots
+def rebuildToAz(ec2Az,snapAttribs):
+
+    if ec2Az == '':
+        arbSnap = next(iter(snapAttribs))
+        rebuildAz = snapAttribs[arbSnap]['Original AZ']
+    else:
+        rebuildAz = ec2Az
+
+    print('Building resources in: ' + rebuildAz + '\n')
+    return rebuildAz
+
+
 # Make our connections to the service
 ec2client = boto3.client('ec2')
 ec2resource = boto3.resource('ec2')
@@ -172,6 +228,7 @@ cmdopts.add_option(
         "-z", "--availability-zone",
             action="store",
             dest="availability_zone",
+            default="",
             help="Availability zone to build recovery-instance in (defaults to value found on snapshots)",
             type="string"
     )
@@ -188,29 +245,42 @@ provKey  = options.provisioning_key
 snapSearchVal = options.search_string
 
 
+# Surface snapshots' tags
 snapAttribs = snapTagsToAttribs(snapSearchVal)
-sys.exit()
+
+# Decide which AZ to reconstitute to
+buildAz = rebuildToAz(ec2Az,snapAttribs)
+
+# Rebuild EBSes
+restoredEbsInfo = snapsToEbses(buildAz,ebsType,snapAttribs)
 
 # Start recovery-instance and extract requisite data-points from process
-recoveryHost = mkRecovInst(amiId, ec2Type, provKey, ec2Snet, ec2Az, ec2Label)
+recoveryHost = mkRecovInst(amiId, ec2Type, provKey, ec2Snet, buildAz, ec2Label)
 recoveryHostInstanceStruct = recoveryHost.get('Instances', None)
 recoveryHostState = recoveryHostInstanceStruct[0].get('State', None).get('Code', None)
 recoveryHostInstanceId = recoveryHostInstanceStruct[0].get('InstanceId', None)
 
+# Sometimes info takes a few to become available for querying
+time.sleep(10)
+
 # Printout recvoery-instance ID
-print('Launched instance (' + recoveryHostInstanceId + '): ', end = '')
+print('\nLaunched instance (' + recoveryHostInstanceId + '): ', end = '')
 
 # Wait for it to come to desired initial state
 while ( chkInstState(recoveryHostInstanceId) != 'ok' ):
-    time.sleep(5)
     print('Waiting for ' + recoveryHostInstanceId + ' to come online... ', end = '')
-    time.sleep(5)
+    time.sleep(10)
 
 # Issue stop-request
 stopRecovInst(recoveryHostInstanceId)
 
+# Need to delay: queries break during some parts of stat-transition
+time.sleep(10)
+
 # Wait for instance to stop
 while ( chkInstState(recoveryHostInstanceId) != 'stopped' ):
-    time.sleep(5)
     print('Waiting for ' + recoveryHostInstanceId + ' to stop... ', end = '')
-    time.sleep(5)
+    time.sleep(10)
+
+# Print info about restored EBS(es)
+print(restoredEbsInfo)
