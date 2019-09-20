@@ -36,6 +36,7 @@ def mkRecovInst(amiId, ec2Type, provKey, ec2Snet, ec2Az, ec2Label):
     )
 
     return launchResponseJson
+    
 
 # Stop recovery-instance
 def stopRecovInst(instanceId):
@@ -48,6 +49,7 @@ def stopRecovInst(instanceId):
     )
 
     return
+
 
 # Check recovery-instance's state
 def chkInstState(instanceId):
@@ -74,7 +76,40 @@ def chkInstState(instanceId):
 
     print(currentState)
     return currentState
-    
+
+
+# Get snapshot information
+def getSnapInfo(snapSearchVal):
+    snapInfo = ec2client.describe_snapshots(
+       Filters=[
+          {
+              'Name': 'tag:Snapshot Group',
+              'Values': [
+                 snapSearchVal
+              ]
+          }
+       ]
+    )
+
+    return snapInfo
+
+
+# Extract tags from snapshot attributes
+def snapTagsToAttribs(snapSearchVal):
+    snapReturn = {}
+
+    for snapInfo in getSnapInfo(snapSearchVal)['Snapshots']:
+        snapAttribs = {}
+        snapId = snapInfo['SnapshotId']
+
+        for tags in snapInfo['Tags']:
+            tagList = list(tags.values())
+            snapAttribs[tagList[0]] = tagList[1]
+
+        snapReturn[snapId] = snapAttribs
+
+    return snapReturn
+
 
 # Make our connections to the service
 ec2client = boto3.client('ec2')
@@ -152,6 +187,10 @@ ec2Type = options.recovery_instance_type
 provKey  = options.provisioning_key
 snapSearchVal = options.search_string
 
+
+snapAttribs = snapTagsToAttribs(snapSearchVal)
+sys.exit()
+
 # Start recovery-instance and extract requisite data-points from process
 recoveryHost = mkRecovInst(amiId, ec2Type, provKey, ec2Snet, ec2Az, ec2Label)
 recoveryHostInstanceStruct = recoveryHost.get('Instances', None)
@@ -175,4 +214,3 @@ while ( chkInstState(recoveryHostInstanceId) != 'stopped' ):
     time.sleep(5)
     print('Waiting for ' + recoveryHostInstanceId + ' to stop... ', end = '')
     time.sleep(5)
-
