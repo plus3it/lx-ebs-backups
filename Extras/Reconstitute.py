@@ -229,7 +229,7 @@ def killRootEBS(instance):
 
 # Attach reconstituted volumes
 def reattachVolumes(instance,ebsInfo):
-    
+
     print('\nGetting ready to attach reconstituted EBS volumes')
     # Iterate over the EBS info-structure
     for ebsObject in ebsInfo:
@@ -275,6 +275,28 @@ def getConnectInfo(instanceId):
 
     print('Attach to recovery-instance at ' + instancePrivName, end='')
     print(' (' + instancePrivIp + ')')
+
+    return
+
+
+#
+def addAccess(instanceId,securityGroups):
+    secGrpList = securityGroups.split(',')
+
+    if ( len(secGrpList) <= 5 ):
+        for secGrp in secGrpList:
+            print('Attempting to add security-group ' + secGrp, end='')
+            print(' to ' + instanceId + '... ', end='')
+            try:
+                ec2client.modify_instance_attribute(
+                    Groups=[secGrp],
+                    InstanceId=instanceId,
+                )
+                print('Success')
+            except:
+                print('Failed')
+    else:
+        print('List of security-groups too long. Skipping')
 
     return
 
@@ -351,6 +373,13 @@ cmdopts.add_option(
             type="string"
     )
 cmdopts.add_option(
+        "-x", "--access-groups",
+            action="store",
+            dest="recovery_sg",
+            help="Security-groups to assign to recovery-instance",
+            type="string"
+    )
+cmdopts.add_option(
         "-z", "--availability-zone",
             action="store",
             dest="availability_zone",
@@ -370,6 +399,7 @@ ec2Type = options.recovery_instance_type
 powerOn = options.recovery_power
 provKey  = options.provisioning_key
 rootSnap = options.root_snapid
+securityGroups = options.recovery_sg
 snapSearchVal = options.search_string
 
 
@@ -408,6 +438,10 @@ killRootEBS(recoveryHostInstanceId)
 
 # Attach all the reconstituted volumes to the recovery-instance
 reattachVolumes(recoveryHostInstanceId,restoredEbsInfo)
+
+# Attach security-groups to instance
+if securityGroups:
+    addAccess(recoveryHostInstanceId,securityGroups)
 
 # Start recovery-instance if requested
 if powerOn:
