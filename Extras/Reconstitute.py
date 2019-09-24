@@ -36,7 +36,7 @@ def mkRecovInst(amiId, ec2Type, provKey, ec2Snet, ec2Az, ec2Label):
     )
 
     return launchResponseJson
-    
+
 
 # Stop recovery-instance
 def stopRecovInst(instanceId):
@@ -209,6 +209,32 @@ def killRootEBS(instance):
 
     return
 
+# Attach reconstituted volumes
+def reattachVolumes(instance,ebsInfo):
+    
+    # Iterate over the EBS info-structure
+    for ebsObject in ebsInfo:
+        newVolume = ebsObject['VolumeId']
+
+        # Fetch our attachment-point
+        attachPoint = next(item for item in ebsObject['Tags'] if item['Key'] == 'Original Attachment')['Value']
+
+        # Inform user of action
+        print('Attaching ' + newVolume + ' to ' + instance + ' at ', end='')
+        print(attachPoint + '...')
+
+        # Perform attachment
+        attachOutput = ec2client.attach_volume(
+            Device=attachPoint,
+            InstanceId=instance,
+            VolumeId=newVolume
+        )
+
+        # Output results
+        print(attachOutput)
+
+    return
+
 
 # Make our connections to the service
 ec2client = boto3.client('ec2')
@@ -235,14 +261,21 @@ cmdopts.add_option(
         "-k", "--provisioning-key",
             action="store",
             dest="provisioning_key",
-            help="SSH key to inject into recovery-instance",
+            help="SSH key to inject into recovery-instance [**NOT YET IMPLEMENTED**]",
             type="string"
     )
 cmdopts.add_option(
         "-n", "--recovery-hostname",
             action="store",
             dest="recovery_hostname",
-            help="Name to assign to recovery-instance",
+            help="Name to assign to recovery-instance (as shown in EC2 console/CLI)",
+            type="string"
+    )
+cmdopts.add_option(
+        "-r", "--root-snapid",
+            action="store",
+            dest="root_snapid",
+            help="Snapshot-ID of original instance's root EBS (if not part of snapshot-group) [**NOT YET IMPLEMENTED**]",
             type="string"
     )
 cmdopts.add_option(
@@ -285,6 +318,7 @@ ec2Label  = options.recovery_hostname
 ec2Snet = options.deployment_subnet
 ec2Type = options.recovery_instance_type
 provKey  = options.provisioning_key
+rootSnap = options.root_snapid
 snapSearchVal = options.search_string
 
 
@@ -328,6 +362,5 @@ while ( chkInstState(recoveryHostInstanceId) != 'stopped' ):
 # Detach recovery-instance's default root-EBS
 killRootEBS(recoveryHostInstanceId)
 
-# Print info about restored EBS(es)
-print('==============================')
-print(restoredEbsInfo)
+# Attach all the reconstituted volumes to the recovery-instance
+reattachVolumes(recoveryHostInstanceId,restoredEbsInfo)
