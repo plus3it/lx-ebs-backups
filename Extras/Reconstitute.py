@@ -167,6 +167,49 @@ def rebuildToAz(ec2Az,snapAttribs):
     return rebuildAz
 
 
+# Detach rootEBS from instance
+def killRootEBS(instance):
+
+    # Extract target-EBS from instance-ID
+    tgtEbs = ec2client.describe_instances(
+        InstanceIds=[
+            instance
+        ],
+    )['Reservations'][0]['Instances'][0]['BlockDeviceMappings'][0]['Ebs']['VolumeId']
+
+    # Print action-message
+    print('\nDetaching volume ' + tgtEbs + ' from instance ' + instance + '...')
+
+    # Request detach
+    ec2client.detach_volume(InstanceId=instance,VolumeId=tgtEbs)
+
+    # Wait for EBS to come free
+    while ( ec2client.describe_volumes(VolumeIds=[ tgtEbs ])['Volumes'][0]['State'] != 'available' ):
+        volumeState = ec2client.describe_volumes(VolumeIds=[ tgtEbs ])['Volumes'][0]['State']
+        print('Volume ' + tgtEbs + ' is still ' + volumeState + '...')
+        time.sleep(10)
+
+    # If you're happy and you know it...
+    print('Volume ' + tgtEbs + ' successfully detached')
+
+    # Print action-message
+    print('\nCleaning up volume ' + tgtEbs +  '...')
+
+    # Nuke the volume
+    ec2client.delete_volume(VolumeId=tgtEbs) 
+
+    # Wait for it to go bye-bye
+    while True:
+        try:
+            ec2client.describe_volumes(VolumeIds=[ tgtEbs ])
+            print('Waiting for ' + tgtEbs + ' to die...')
+        except:
+            print('Successfully deleted ' + tgtEbs)
+            break
+
+    return
+
+
 # Make our connections to the service
 ec2client = boto3.client('ec2')
 ec2resource = boto3.resource('ec2')
@@ -282,5 +325,9 @@ while ( chkInstState(recoveryHostInstanceId) != 'stopped' ):
     print('Waiting for ' + recoveryHostInstanceId + ' to stop... ', end = '')
     time.sleep(10)
 
+# Detach recovery-instance's default root-EBS
+killRootEBS(recoveryHostInstanceId)
+
 # Print info about restored EBS(es)
+print('==============================')
 print(restoredEbsInfo)
