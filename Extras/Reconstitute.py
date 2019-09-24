@@ -212,6 +212,7 @@ def killRootEBS(instance):
 # Attach reconstituted volumes
 def reattachVolumes(instance,ebsInfo):
     
+    print('\nGetting ready to attach reconstituted EBS volumes')
     # Iterate over the EBS info-structure
     for ebsObject in ebsInfo:
         newVolume = ebsObject['VolumeId']
@@ -230,10 +231,7 @@ def reattachVolumes(instance,ebsInfo):
             VolumeId=newVolume
         )
 
-        # Output results
-        print(attachOutput)
-
-    return
+    return attachOutput
 
 
 # Make our connections to the service
@@ -337,16 +335,22 @@ recoveryHostInstanceStruct = recoveryHost.get('Instances', None)
 recoveryHostState = recoveryHostInstanceStruct[0].get('State', None).get('Code', None)
 recoveryHostInstanceId = recoveryHostInstanceStruct[0].get('InstanceId', None)
 
-# Sometimes info takes a few to become available for querying
-time.sleep(10)
-
 # Printout recvoery-instance ID
 print('\nLaunched instance (' + recoveryHostInstanceId + '): ', end = '')
 
-# Wait for it to come to desired initial state
-while ( chkInstState(recoveryHostInstanceId) != 'ok' ):
-    print('Waiting for ' + recoveryHostInstanceId + ' to come online... ', end = '')
-    time.sleep(10)
+# Wait for recovery-instance to come to desired initial state
+while True:
+    try:
+       instanceState = chkInstState(recoveryHostInstanceId)
+       if ( instanceState == 'ok' ):
+           break
+       else:
+           print('Waiting for ' + recoveryHostInstanceId, end='')
+           print(' to come online... ', end = '')
+           time.sleep(10)
+    except:
+        print('pending')
+        time.sleep(10)
 
 # Issue stop-request
 stopRecovInst(recoveryHostInstanceId)
