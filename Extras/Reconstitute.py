@@ -38,6 +38,24 @@ def mkRecovInst(amiId, ec2Type, provKey, ec2Snet, ec2Az, ec2Label):
     return launchResponseJson
 
 
+# Monitor instance state-transition
+def ec2StateChange(recoveryHostInstanceId,targState,targStatus):
+    while True:
+        try:
+           instanceState = chkInstState(recoveryHostInstanceId)
+           if ( instanceState == targStatus ):
+               break
+           else:
+               print('Waiting for ' + recoveryHostInstanceId, end='')
+               print(' to reach ' + targState + '... ', end = '')
+               time.sleep(10)
+        except:
+            print('pending')
+            time.sleep(10)
+
+    return
+
+
 # Stop recovery-instance
 def stopRecovInst(instanceId):
     print('\nRequesting stop of ' + instanceId + '... ', end = '')
@@ -234,6 +252,33 @@ def reattachVolumes(instance,ebsInfo):
     return attachOutput
 
 
+# Power on restored instance
+def powerOnInstance(instanceId):
+
+    print('\nRequesting final power-on of ' + instanceId + '... ', end = '')
+
+    instanceInfo = ec2client.start_instances(
+        InstanceIds=[
+            instanceId,
+        ],
+    )
+
+    return instanceInfo
+
+
+# Get connection-info
+def getConnectInfo(instanceId):
+    instanceInfo = ec2client.describe_instances(InstanceIds=[instanceId])['Reservations'][0]['Instances'][0]
+    instancePrivName = instanceInfo['PrivateDnsName']
+    instancePrivIp = instanceInfo['PrivateIpAddress']
+    # instancePubName = instanceInfo['PublicDnsName']
+
+    print('Attach to recovery-instance at ' + instancePrivName, end='')
+    print(' (' + instancePrivIp + ')')
+
+    return
+
+
 # Make our connections to the service
 ec2client = boto3.client('ec2')
 ec2resource = boto3.resource('ec2')
@@ -261,6 +306,13 @@ cmdopts.add_option(
             dest="provisioning_key",
             help="SSH key to inject into recovery-instance [**NOT YET IMPLEMENTED**]",
             type="string"
+    )
+cmdopts.add_option(
+        "-P", "--power-on",
+            action="store_true",
+            dest="recovery_power",
+            default=False,
+            help="Power on the recovered instance"
     )
 cmdopts.add_option(
         "-n", "--recovery-hostname",
@@ -315,6 +367,7 @@ ec2Az = options.availability_zone
 ec2Label  = options.recovery_hostname
 ec2Snet = options.deployment_subnet
 ec2Type = options.recovery_instance_type
+powerOn = options.recovery_power
 provKey  = options.provisioning_key
 rootSnap = options.root_snapid
 snapSearchVal = options.search_string
@@ -338,33 +391,27 @@ recoveryHostInstanceId = recoveryHostInstanceStruct[0].get('InstanceId', None)
 # Printout recvoery-instance ID
 print('\nLaunched instance (' + recoveryHostInstanceId + '): ', end = '')
 
-# Wait for recovery-instance to come to desired initial state
-while True:
-    try:
-       instanceState = chkInstState(recoveryHostInstanceId)
-       if ( instanceState == 'ok' ):
-           break
-       else:
-           print('Waiting for ' + recoveryHostInstanceId, end='')
-           print(' to come online... ', end = '')
-           time.sleep(10)
-    except:
-        print('pending')
-        time.sleep(10)
+# Track lauch-status
+ec2StateChange(recoveryHostInstanceId, 'online', 'ok')
 
 # Issue stop-request
 stopRecovInst(recoveryHostInstanceId)
 
-# Need to delay: queries break during some parts of stat-transition
-time.sleep(10)
+## # Need to delay: queries break during some parts of stat-transition
+## time.sleep(10)
 
 # Wait for instance to stop
-while ( chkInstState(recoveryHostInstanceId) != 'stopped' ):
-    print('Waiting for ' + recoveryHostInstanceId + ' to stop... ', end = '')
-    time.sleep(10)
+ec2StateChange(recoveryHostInstanceId, 'offline', 'stopped')
 
 # Detach recovery-instance's default root-EBS
 killRootEBS(recoveryHostInstanceId)
 
 # Attach all the reconstituted volumes to the recovery-instance
 reattachVolumes(recoveryHostInstanceId,restoredEbsInfo)
+
+# Start recovery-instance if requested
+if powerOn:
+    powerOnInstance(recoveryHostInstanceId)
+    ec2StateChange(recoveryHostInstanceId, 'online', 'ok')
+    getConnectInfo(recoveryHostInstanceId)
+
