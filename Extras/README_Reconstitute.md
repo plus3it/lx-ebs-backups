@@ -1,4 +1,4 @@
-## The basics
+## The Basics
 
 The `Reconstitute.py` utility is a tool designed to automate the recovery from snapshots created by this project's other tooling. Further, this utility can automate the recovery created by other projects' tooling, so long as those snapshots contain tags that:
 
@@ -28,3 +28,27 @@ The `Reconstitute.py` utility accepts the following arguments:
 * `--alt-search-tag`: Snapshot-attribute used to find grouped-snapshots (Default: 'Snapshot Group')
 * `--alt-ec2-tag`: Snapshot-attribute containing original EC2 ID (Default: 'Original Instance')
 * `--alt-device-tag`: Snapshot-attribute containing original EBS attachment- info (Default: 'Original Attachment')
+
+## Dependencies
+
+* This utilty is written for Python3 - and specifically tested with python 3.6. This utility does not function properly under Python 2.x
+* This utility requires the following Python modules:
+    * [`boto3`](https://pypi.org/project/boto3/): Boto3 is the Amazon Web Services (AWS) Software Development Kit (SDK) for Python, which allows Python developers to write software that makes use of services like Amazon S3 and Amazon EC2.
+    * [`sys`](https://docs.python.org/3/library/sys.html): Provides access to some variables used or maintained by the interpreter and to functions that interact strongly with the interpreter.
+    * [`time`](https://docs.python.org/3/library/time.html): Provides various time-related functions. 
+    * `optparse`: Parser for command line options
+
+## Caveats
+
+* Script does not implement any internal/stand-alone session-management. The invoking environment will need to be configured to provide session-access to the AWS APIs as well as selection of target region.
+* Script does not currently implement much in the way of validity checking for AWS-level objects (e.g., no pre-verification of AMI IDs, subnets, etc.)
+* Script does not attempt to inject any provisioning (rescue) SSH public-keys into the recovery instance:
+    * If the source instance relied on SSH key for login, only the keys already present in the EBS snapshots will be present in the recovered instance.
+    * If the source instance relied on Kerberized authentication mechanisms (e.g. Active Directory) for login-managment, recovered instances will only be reachable if the Kerberos authentication elements stored in the source snapshots have not expired
+    * If the source instance was not quiesced prior to snapshotting, the filesystems residing on the reconstituted EBS volumes will be in a "[crash consistent](https://www.trilio.io/resources/application-consistent-vs-crash-consistent-backup/)" state:
+        * Recovered Linux instances should return filesystems to a clean state via filesystem log-recovery
+        * Recovered Windows instances will typically display a "Shutdown Event Tracker" popup on first login.
+        * Hosted applications may require application-specific recovery-methods be performed
+* EC2s that are built with the `cloud-init` service enabled may re-run any `per-instance` automation present in the reconstituted EBSes:
+    * Hostnames may be altered due to that content
+    * Other launch-time automation (e.g., EC2 userData) may be triggered
