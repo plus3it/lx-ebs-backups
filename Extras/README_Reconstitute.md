@@ -1,3 +1,5 @@
+## The basics
+
 The `Reconstitute.py` utility is a tool designed to automate the recovery from snapshots created by this project's other tooling. Further, this utility can automate the recovery created by other projects' tooling, so long as those snapshots contain tags that:
 
 * The instance-ID of the EC2 that owned the EBS from which the snapshot was created
@@ -14,35 +16,15 @@ The `Reconstitute.py` utility accepts the following arguments:
     * `gp2`: Basic 'SSD' volume-type. (Default: leave flag unspecified if using this value)
     * `sc1`: "Cold" HDD (See: AWS [blog entry](https://aws.amazon.com/blogs/aws/amazon-ebs-update-new-cold-storage-and-throughput-options/))
     * `st1`: Throughput-optimized HDD
-* `-k PROVISIONING_KEY, --provisioning-key=PROVISIONING_KEY
-                        SSH key to inject into recovery-instance [**NOT YET
-                        IMPLEMENTED**]
-* `-P, --power-on        Power on the recovered instance
-* `-n RECOVERY_HOSTNAME, --recovery-hostname=RECOVERY_HOSTNAME
-                        Name to assign to recovery-instance (as shown in EC2
-                        console/CLI)
-* `-r ROOT_SNAPID, --root-snapid=ROOT_SNAPID
-                        Snapshot-ID of original instance's root EBS (if not
-                        part of snapshot-group) [**NOT YET IMPLEMENTED**]
-* `-S SEARCH_STRING, --search-string=SEARCH_STRING
-                        String-value to search for (use commas to search for
-                        more than one string-value)
-* `-s DEPLOYMENT_SUBNET, --deployment-subnet=DEPLOYMENT_SUBNET
-                        Subnet ID to deploy recovery-instance into
-* `-t RECOVERY_INSTANCE_TYPE, --instance-type=RECOVERY_INSTANCE_TYPE
-                        Instance-type to use for recovery-instance (Default:
-                        t3.large)
-* `-x RECOVERY_SG, --access-groups=RECOVERY_SG
-                        Security-groups to assign to recovery-instance
-* `-z AVAILABILITY_ZONE, --availability-zone=AVAILABILITY_ZONE
-                        Availability zone to build recovery-instance in
-                        (defaults to value found on snapshots)
-* `--alt-search-tag=SEARCH_TAG
-                        Snapshot-attribute used to find grouped-snapshots
-                        (Default: 'Snapshot Group')
-* `--alt-ec2-tag=ORIGINAL_EC2_TAG
-                        Snapshot-attribute containing original EC2 ID
-                        (Default: 'Original Instance')
-* `--alt-device-tag=ORIGINAL_DEVICE_TAG
-                        Snapshot-attribute containing original EBS attachment-
-                        info (Default: 'Original Attachment')
+* `-k` or `--provisioning-key`: SSH key to inject into recovery-instance [**NOT YET IMPLEMENTED**]
+* `-P` or `--power-on`: Power on the recovered instance (Boolean: specify to enable end-of-recovery power-on; leave unspecified if ecovery-instance should remain powerd off)
+* `-n` or `--recovery-hostname`: AWS-level name to assign to recovery-instance (as shown in EC2 console/CLI: does not effect recovered instance's internal hostname value)
+* `-r` or `--root-snapid:  Snapshot-ID of original instance's root EBS (if not part of snapshot-group) [**NOT YET IMPLEMENTED**]
+* `-S` or `--search-string`: String-value used to select targeted snapshots
+* `-s` or `--deployment-subnet`: Subnet ID to deploy recovery-instance into
+* `-t` or `--instance-type`: Instance-type to use for recovery-instance (Default: t3.large)
+* `-x` or `--access-groups`: Security-group to assign to recovery-instance
+* `-z` or `--availability-zone`: Availability zone to build recovery-instance in (defaults to value found on snapshots)
+* `--alt-search-tag`: Snapshot-attribute used to find grouped-snapshots (Default: 'Snapshot Group')
+* `--alt-ec2-tag`: Snapshot-attribute containing original EC2 ID (Default: 'Original Instance')
+* `--alt-device-tag`: Snapshot-attribute containing original EBS attachment- info (Default: 'Original Attachment')
