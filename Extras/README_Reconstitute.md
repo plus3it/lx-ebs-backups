@@ -49,6 +49,7 @@ The `Reconstitute.py` utility accepts the following arguments:
         * Recovered Linux instances should return filesystems to a clean state via filesystem log-recovery
         * Recovered Windows instances will typically display a "Shutdown Event Tracker" popup on first login.
         * Hosted applications may require application-specific recovery-methods be performed
+* If the script is used to clone or "move" a live EC2 instance and the source-instance is a member a service-domain (like Kerberos/Active Directory or some kind of clustered application), it may cause collisions if the recovery-instance is powered on while the source-instance is also powered on.
 * EC2s that are built with the `cloud-init` service enabled may re-run any `per-instance` automation present in the reconstituted EBSes:
     * Hostnames may be altered due to that content
     * Other launch-time automation (e.g., EC2 userData) may be triggered
