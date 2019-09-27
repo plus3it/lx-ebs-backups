@@ -8,10 +8,12 @@ The `Reconstitute.py` utility accepts the following arguments:
 
 * `-h` or `--help`: Shows information about available flags and associated arguments. Specifying this flag causes the script to immediately exit after printing the help-contents &mdash; whether or not other flags and arguments are specified.
 * `-a` or ` --recovery-ami`: Requires a valid AMI ID as argument. This script can automatically recover both Linux- and Windows-based EC2s. It is expected that the supplied AMI ID will be either same as the one used to create the source EC2 or in the same AMI-family (e.g. [spel](https://github.com/plus3it/spel) AMIs). It's possible that other AMIs will suffice, but such has not been tested.
-                        AMI ID to launch recovery-instance from
-* `-e EBS_VOLUME_TYPE, --ebs-type=EBS_VOLUME_TYPE
-                        Type of EBS volume to create from snapshots (Default:
-                        gp2)
+* `-e` or `--ebs-type`: Requires a valid EBS-type as argument. The specified type is used during the process of reconstituting target snapshots as EBS volumes. Valid values are:
+    * `standard`: Legacy "magnetic" volumes.
+    * `io1`: Provisioned IOPS SSD [**NOT YET SUPPORTED**]
+    * `gp2`: Basic 'SSD' volume-type. (Default: leave flag unspecified if using this value)
+    * `sc1`: "Cold" HDD (See: AWS [blog entry](https://aws.amazon.com/blogs/aws/amazon-ebs-update-new-cold-storage-and-throughput-options/))
+    * `st1`: Throughput-optimized HDD
 * `-k PROVISIONING_KEY, --provisioning-key=PROVISIONING_KEY
                         SSH key to inject into recovery-instance [**NOT YET
                         IMPLEMENTED**]
