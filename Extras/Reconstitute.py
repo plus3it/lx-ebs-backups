@@ -101,13 +101,17 @@ def getSnapInfo(snapSearchVal):
     snapInfo = ec2client.describe_snapshots(
        Filters=[
           {
-              'Name': 'tag:Snapshot Group',
+              'Name': 'tag:'+snapSearchTag,
               'Values': [
                  snapSearchVal
               ]
           }
        ]
     )
+
+    # Make sure we actually found snapshots to reconstitute...
+    if ( len(snapInfo['Snapshots']) == 0 ):
+        sys.exit("Found no matching snapshots to reconstitute: aborting")
 
     return snapInfo
 
@@ -137,8 +141,8 @@ def snapsToEbses(buildAz,ebsType,snapAttribs):
     # Iterate over snapshot-list
     for snapshot in snapAttribs:
         # Get useful info from snapshot's data
-        origInstance = snapAttribs[snapshot]['Original Instance']
-        origAttach = snapAttribs[snapshot]['Original Attachment']
+        origInstance = snapAttribs[snapshot][snapEc2IdTag]
+        origAttach = snapAttribs[snapshot][snapDevTag]
 
         # Let user know what we're doing
         print('Creating ' + ebsType + ' volume from ' + snapshot + '... ', end='')
@@ -387,6 +391,30 @@ cmdopts.add_option(
             help="Availability zone to build recovery-instance in (defaults to value found on snapshots)",
             type="string"
     )
+cmdopts.add_option(
+        "--alt-search-tag",
+            action="store",
+            default="Snapshot Group",
+            dest="search_tag",
+            help="Snapshot-attribute used to find grouped-snapshots (Default: '%default')",
+            type="string"
+    )
+cmdopts.add_option(
+        "--alt-ec2-tag",
+            action="store",
+            default="Original Instance",
+            dest="original_ec2_tag",
+            help="Snapshot-attribute containing original EC2 ID (Default: '%default')",
+            type="string"
+    )
+cmdopts.add_option(
+        "--alt-device-tag",
+            action="store",
+            default= "Original Attachment",
+            dest="original_device_tag",
+            help="Snapshot-attribute containing original EBS attachment-info (Default: '%default')",
+            type="string"
+    )
 
 # Parse the command options
 (options, args) = cmdopts.parse_args()
@@ -400,7 +428,10 @@ powerOn = options.recovery_power
 provKey  = options.provisioning_key
 rootSnap = options.root_snapid
 securityGroups = options.recovery_sg
+snapSearchTag = options.search_tag
 snapSearchVal = options.search_string
+snapEc2IdTag = options.original_ec2_tag
+snapDevTag = options.original_device_tag
 
 
 # Surface snapshots' tags
