@@ -306,6 +306,19 @@ def addAccess(instanceId,securityGroups):
     return
 
 
+# Read in external userData content
+def getUserData(userDataFile):
+
+    # See if file can be opened; bail if not
+    try:
+        fileHandle = open(userDataFile, 'r')
+        fileContent = fileHandle.read()
+    except:
+        sys.exit('Failed while opening ' + userDataFile)
+
+    return fileContent
+
+
 # Copy userData from source-instance to recovery-instance
 def cloneUserdata(recoveryHostInstanceId, snapAttribs):
 
@@ -338,6 +351,22 @@ def cloneUserdata(recoveryHostInstanceId, snapAttribs):
 
     return
 
+
+# Inject recovery-userData into recovery-instance
+def injectUserdata(recoveryHostInstanceId, userDataContent):
+
+    # Push userdata to recovery EC2
+    try:
+        modedEc2 = ec2client.modify_instance_attribute(
+                       InstanceId=recoveryHostInstanceId,
+                       UserData={
+                           'Value': userDataContent
+                       },
+                   )
+    except:
+        sys.exit('Failed to set userData on recovery-instance')
+
+    return
 
 
 # Make our connections to the service
@@ -483,6 +512,9 @@ snapDevTag = options.original_device_tag
 userDataBool = options.userdata_bool
 userDataFile = options.userdata_file
 
+# Test file-access early so we can save some time/effort
+if userDataFile:
+    userDataContent = getUserData(userDataFile)
 
 # Surface snapshots' tags
 snapAttribs = snapTagsToAttribs(snapSearchVal)
@@ -526,7 +558,7 @@ if securityGroups:
 
 # Inject userData from file if requested
 if userDataFile:
-    print('', end='')
+    injectUserdata(recoveryHostInstanceId, userDataContent)
 
 # Inject cloned userData if requested
 if userDataBool:
