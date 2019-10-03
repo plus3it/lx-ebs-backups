@@ -504,6 +504,10 @@ snapDevTag = options.original_device_tag
 userDataBool = options.userdata_bool
 userDataFile = options.userdata_file
 
+# Handle mutually-exclusive options
+if userDataBool is not False and userDataFile is not False:
+    sys.exit('ERROR: `-u` and `-U` are mutually-exclusive options')
+
 # Test file-access early so we can save some time/effort
 if userDataFile:
     userDataContent = getUserData(userDataFile)
