@@ -306,8 +306,8 @@ def addAccess(instanceId,securityGroups):
     return
 
 
-# Inject userData into recovery-instance
-def injectUserdata(recoveryHostInstanceId, snapAttribs):
+# Copy userData from source-instance to recovery-instance
+def cloneUserdata(recoveryHostInstanceId, snapAttribs):
 
     # Fetch userData from original Instance
     try:
@@ -530,7 +530,7 @@ if userDataFile:
 
 # Inject cloned userData if requested
 if userDataBool:
-    injectUserdata(recoveryHostInstanceId, snapAttribs)
+    cloneUserdata(recoveryHostInstanceId, snapAttribs)
 
 # Start recovery-instance if requested
 if powerOn:
