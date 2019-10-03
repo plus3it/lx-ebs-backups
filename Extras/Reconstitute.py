@@ -361,6 +361,25 @@ def cloneUserdata(recoveryHostInstanceId, snapAttribs):
     return
 
 
+# Validate the passed subnet
+def validSubnet(subnetId):
+
+    # Extract availability-zone from subnet
+    try:
+        subnetStruct = ec2client.describe_subnets(
+                           SubnetIds=[
+                               subnetId
+                           ]
+                       )
+        subnetAz = subnetStruct['Subnets'][0]['AvailabilityZone']
+    except:
+        sys.exit('Subnet ' + subnetId + ' not found')
+
+    return subnetAz
+
+
+
+
 # Make our connections to the service
 ec2client = boto3.client('ec2')
 ec2resource = boto3.resource('ec2')
@@ -453,14 +472,6 @@ cmdopts.add_option(
             type="string"
     )
 cmdopts.add_option(
-        "-z", "--availability-zone",
-            action="store",
-            dest="availability_zone",
-            default="",
-            help="Availability zone to build recovery-instance in (defaults to value found on snapshots)",
-            type="string"
-    )
-cmdopts.add_option(
         "--alt-search-tag",
             action="store",
             default="Snapshot Group",
@@ -489,7 +500,6 @@ cmdopts.add_option(
 (options, args) = cmdopts.parse_args()
 amiId = options.recovery_ami_id
 ebsType  = options.ebs_volume_type
-ec2Az = options.availability_zone
 ec2Label  = options.recovery_hostname
 ec2Snet = options.deployment_subnet
 ec2Type = options.recovery_instance_type
@@ -507,6 +517,9 @@ userDataFile = options.userdata_file
 # Handle mutually-exclusive options
 if userDataBool is not False and userDataFile is not False:
     sys.exit('ERROR: `-u` and `-U` are mutually-exclusive options')
+
+# Ensure reconstitution-subnet is valid
+ec2Az = validSubnet(ec2Snet)
 
 # Test file-access early so we can save some time/effort
 if userDataFile:
