@@ -319,6 +319,23 @@ def getUserData(userDataFile):
     return fileContent
 
 
+# Inject recovery-userData into recovery-instance
+def injectUserdata(recoveryHostInstanceId, userDataContent):
+
+    # Push userdata to recovery EC2
+    try:
+        modedEc2 = ec2client.modify_instance_attribute(
+                       InstanceId=recoveryHostInstanceId,
+                       UserData={
+                           'Value': userDataContent
+                       },
+                   )
+    except:
+        sys.exit('Failed to set userData on recovery-instance')
+
+    return
+
+
 # Copy userData from source-instance to recovery-instance
 def cloneUserdata(recoveryHostInstanceId, snapAttribs):
 
@@ -339,32 +356,7 @@ def cloneUserdata(recoveryHostInstanceId, snapAttribs):
         print('Unable to determine source instance-Id from snapshot attributes')
 
     # Push userdata to recovery EC2
-    try:
-        modedEc2 = ec2client.modify_instance_attribute(
-                       InstanceId=recoveryHostInstanceId,
-                       UserData={
-                           'Value': userDataTxt
-                       },
-                   )
-    except:
-        sys.exit('Failed to set userData on recovery-instance')
-
-    return
-
-
-# Inject recovery-userData into recovery-instance
-def injectUserdata(recoveryHostInstanceId, userDataContent):
-
-    # Push userdata to recovery EC2
-    try:
-        modedEc2 = ec2client.modify_instance_attribute(
-                       InstanceId=recoveryHostInstanceId,
-                       UserData={
-                           'Value': userDataContent
-                       },
-                   )
-    except:
-        sys.exit('Failed to set userData on recovery-instance')
+    injectUserdata(recoveryHostInstanceId, userDataTxt)
 
     return
 
