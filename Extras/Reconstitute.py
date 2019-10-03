@@ -1,5 +1,6 @@
 #!/bin/env python
 import boto3
+import base64
 import getopt
 import sys
 import time
@@ -283,7 +284,7 @@ def getConnectInfo(instanceId):
     return
 
 
-#
+# Attach security-groups to recovery-instance
 def addAccess(instanceId,securityGroups):
     secGrpList = securityGroups.split(',')
 
@@ -301,6 +302,61 @@ def addAccess(instanceId,securityGroups):
                 print('Failed')
     else:
         print('List of security-groups too long. Skipping')
+
+    return
+
+
+# Read in external userData content
+def getUserData(userDataFile):
+
+    # See if file can be opened; bail if not
+    try:
+        fileHandle = open(userDataFile, 'r')
+        fileContent = fileHandle.read()
+    except:
+        sys.exit('Failed while opening ' + userDataFile)
+
+    return fileContent
+
+
+# Inject recovery-userData into recovery-instance
+def injectUserdata(recoveryHostInstanceId, userDataContent):
+
+    # Push userdata to recovery EC2
+    try:
+        modedEc2 = ec2client.modify_instance_attribute(
+                       InstanceId=recoveryHostInstanceId,
+                       UserData={
+                           'Value': userDataContent
+                       },
+                   )
+    except:
+        sys.exit('Failed to set userData on recovery-instance')
+
+    return
+
+
+# Copy userData from source-instance to recovery-instance
+def cloneUserdata(recoveryHostInstanceId, snapAttribs):
+
+    # Fetch userData from original Instance
+    try:
+        origInstanceId = snapAttribs[next(iter(snapAttribs))]['Source Instance Id']
+
+        # Get userdata from original EC2
+        userDataB64 = ec2client.describe_instance_attribute(
+                       Attribute='userData',
+                       InstanceId=origInstanceId
+                   )['UserData']['Value']
+
+        # Decode the userData
+        userDataTxt = base64.b64decode(userDataB64)
+
+    except:
+        print('Unable to determine source instance-Id from snapshot attributes')
+
+    # Push userdata to recovery EC2
+    injectUserdata(recoveryHostInstanceId, userDataTxt)
 
     return
 
@@ -338,7 +394,7 @@ cmdopts.add_option(
             action="store_true",
             dest="recovery_power",
             default=False,
-            help="Power on the recovered instance"
+            help="Power on the recovered instance (Default: %default)"
     )
 cmdopts.add_option(
         "-n", "--recovery-hostname",
@@ -375,6 +431,19 @@ cmdopts.add_option(
             dest="recovery_instance_type",
             help="Instance-type to use for recovery-instance (Default: %default)",
             type="string"
+    )
+cmdopts.add_option(
+        "-U", "--user-data-file",
+            action="store",
+            dest="userdata_file",
+            help="Inject userData from selected file"
+    )
+cmdopts.add_option(
+        "-u", "--user-data-clone",
+            action="store_true",
+            default=False,
+            dest="userdata_bool",
+            help="Attempt to clone userData from source instance (Default: %default)"
     )
 cmdopts.add_option(
         "-x", "--access-groups",
@@ -432,7 +501,16 @@ snapSearchTag = options.search_tag
 snapSearchVal = options.search_string
 snapEc2IdTag = options.original_ec2_tag
 snapDevTag = options.original_device_tag
+userDataBool = options.userdata_bool
+userDataFile = options.userdata_file
 
+# Handle mutually-exclusive options
+if userDataBool is not False and userDataFile is not False:
+    sys.exit('ERROR: `-u` and `-U` are mutually-exclusive options')
+
+# Test file-access early so we can save some time/effort
+if userDataFile:
+    userDataContent = getUserData(userDataFile)
 
 # Surface snapshots' tags
 snapAttribs = snapTagsToAttribs(snapSearchVal)
@@ -473,6 +551,14 @@ reattachVolumes(recoveryHostInstanceId,restoredEbsInfo)
 # Attach security-groups to instance
 if securityGroups:
     addAccess(recoveryHostInstanceId,securityGroups)
+
+# Inject userData from file if requested
+if userDataFile:
+    injectUserdata(recoveryHostInstanceId, userDataContent)
+
+# Inject cloned userData if requested
+if userDataBool:
+    cloneUserdata(recoveryHostInstanceId, snapAttribs)
 
 # Start recovery-instance if requested
 if powerOn:
