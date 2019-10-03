@@ -26,7 +26,6 @@ The `Reconstitute.py` utility accepts the following arguments:
 * `-U` or `--user-data-file`:  Inject userData from selected file
 * `-u` or `--user-data-clone`: Attempt to clone userData from source instance (Boolean: specify to enable userData-cloning)
 * `-x` or `--access-groups`: Security-group to assign to recovery-instance
-* `-z` or `--availability-zone`: Availability zone to build recovery-instance in (defaults to value found on snapshots)
 * `--alt-search-tag`: Snapshot-attribute used to find grouped-snapshots (Default: 'Snapshot Group')
 * `--alt-ec2-tag`: Snapshot-attribute containing original EC2 ID (Default: 'Original Instance')
 * `--alt-device-tag`: Snapshot-attribute containing original EBS attachment- info (Default: 'Original Attachment')
