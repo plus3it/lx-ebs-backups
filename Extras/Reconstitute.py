@@ -161,6 +161,7 @@ def recovery_ec2_add_access(instanceId, securityGroups):
     secGrpList = securityGroups.split(',')
 
     if len(secGrpList) <= 5:
+        print()
         for secGrp in secGrpList:
             print('Attempting to add security-group ' + secGrp, end='')
             print(' to ' + instanceId + '... ', end='')
@@ -298,6 +299,8 @@ def userdata_inject(recovery_ec2_id, userdata_content):
 
     # Push userdata to recovery EC2
     try:
+        print('\nInjecting userData into recovery-instance')
+
         EC2_CLIENT.modify_instance_attribute(
             InstanceId=recovery_ec2_id,
             UserData={
