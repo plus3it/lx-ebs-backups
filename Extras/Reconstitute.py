@@ -11,39 +11,39 @@ import base64
 from optparse import OptionParser
 import boto3
 
-def recovery_ec2_get_az(ec2Az, snapAttribs):
+def recovery_ec2_get_az(ec2_az, snapshot_attributes):
     """
     Print AZ actions will take place in
     """
 
-    if ec2Az == '':
-        arbSnap = next(iter(snapAttribs))
-        rebuildAz = snapAttribs[arbSnap]['Original AZ']
+    if ec2_az == '':
+        exemplar_snapshot = next(iter(snapshot_attributes))
+        rebuild_az = snapshot_attributes[exemplar_snapshot]['Original AZ']
     else:
-        rebuildAz = ec2Az
+        rebuild_az = ec2_az
 
-    print('Building resources in: ' + rebuildAz + '\n')
-    return rebuildAz
+    print('Building resources in: ' + rebuild_az + '\n')
+    return rebuild_az
 
 
-def recovery_ec2_make(amiId, ec2Type, provKey, ec2Snet, ec2Az, ec2Label):
+def recovery_ec2_make(ami_id, ec2_type, provisioning_key, ec2_subnet, ec2_az, ec2_label):
     """
     Launch an instance to attach reconstitute EBS volumes to
     """
-    launchResponseJson = EC2_CLIENT.run_instances(
-        ImageId=amiId,
-        InstanceType=ec2Type,
-        KeyName=provKey,
+    launch_info_struct = EC2_CLIENT.run_instances(
+        ImageId=ami_id,
+        InstanceType=ec2_type,
+        KeyName=provisioning_key,
         MaxCount=1,
         MinCount=1,
         NetworkInterfaces=[
             {
                 'DeviceIndex': 0,
-                'SubnetId': ec2Snet
+                'SubnetId': ec2_subnet
             }
         ],
         Placement={
-            'AvailabilityZone': ec2Az
+            'AvailabilityZone': ec2_az
         },
         TagSpecifications=[
             {
@@ -51,124 +51,124 @@ def recovery_ec2_make(amiId, ec2Type, provKey, ec2Snet, ec2Az, ec2Label):
                 'Tags': [
                     {
                         'Key': 'Name',
-                        'Value': ec2Label
+                        'Value': ec2_label
                     }
                 ]
             }
         ]
     )
 
-    return launchResponseJson
+    return launch_info_struct
 
 
-def recovery_ec2_check_state(instanceId):
+def recovery_ec2_check_state(ec2_id):
     """
     Check recovery-instance's state
     """
-    instanceStatus = EC2_CLIENT.describe_instance_status(
+    ec2_status = EC2_CLIENT.describe_instance_status(
         InstanceIds=[
-            instanceId
+            ec2_id
         ]
     )
-    instanceInfo = EC2_CLIENT.describe_instances(
+    ec2_info = EC2_CLIENT.describe_instances(
         InstanceIds=[
-            instanceId
+            ec2_id
         ]
     )
-    instanceState = instanceInfo['Reservations'][0]['Instances'][0]['State']['Name']
+    ec2_state = ec2_info['Reservations'][0]['Instances'][0]['State']['Name']
 
-    if instanceState == 'running':
-        if instanceStatus['InstanceStatuses'][0]['InstanceStatus']['Status']:
-            currentState = instanceStatus['InstanceStatuses'][0]['InstanceStatus']['Status']
+    if ec2_state == 'running':
+        if ec2_status['InstanceStatuses'][0]['InstanceStatus']['Status']:
+            current_state = ec2_status['InstanceStatuses'][0]['InstanceStatus']['Status']
         else:
-            currentState = 'TRANSITIONING'
+            current_state = 'TRANSITIONING'
     else:
-        currentState = instanceState
+        current_state = ec2_state
 
 
-    print(currentState)
-    return currentState
+    print(current_state)
+    return current_state
 
 
-def recovery_ec2_monitor_transition(recoveryHostInstanceId, targState, targStatus):
+def recovery_ec2_monitor_transition(ec2_id, target_state, target_status):
     """
     Monitor instance state-transition
     """
     while True:
         try:
-            instanceState = recovery_ec2_check_state(recoveryHostInstanceId)
-            if instanceState == targStatus:
+            ec2_state = recovery_ec2_check_state(ec2_id)
+            if ec2_state == target_status:
                 break
             else:
-                print('Waiting for ' + recoveryHostInstanceId, end='')
-                print(' to reach ' + targState + '... ', end='')
+                print('Waiting for ' + ec2_id, end='')
+                print(' to reach ' + target_state + '... ', end='')
                 time.sleep(10)
         except:
             print('pending')
             time.sleep(10)
 
 
-def recovery_ec2_power_on(instanceId):
+def recovery_ec2_power_on(ec2_id):
     """
     Power on restored instance
     """
 
-    print('\nRequesting final power-on of ' + instanceId + '... ', end='')
+    print('\nRequesting final power-on of ' + ec2_id + '... ', end='')
 
-    instanceInfo = EC2_CLIENT.start_instances(
+    ec2_info = EC2_CLIENT.start_instances(
         InstanceIds=[
-            instanceId,
+            ec2_id,
         ],
     )
 
-    return instanceInfo
+    return ec2_info
 
 
-def recovery_ec2_stop(instanceId):
+def recovery_ec2_stop(ec2_id):
     """
     Stop recovery-instance
     """
-    print('\nRequesting stop of ' + instanceId + '... ', end='')
+    print('\nRequesting stop of ' + ec2_id + '... ', end='')
 
     EC2_CLIENT.stop_instances(
         InstanceIds=[
-            instanceId,
+            ec2_id,
         ],
     )
 
 
-def recovery_ec2_get_connect(instanceId):
+def recovery_ec2_get_connect(ec2_id):
     """
     Get connection-info
     """
 
-    instanceInfo = EC2_CLIENT.describe_instances(
-        InstanceIds=[instanceId]
+    ec2_info = EC2_CLIENT.describe_instances(
+        InstanceIds=[ec2_id]
     )['Reservations'][0]['Instances'][0]
-    instancePrivName = instanceInfo['PrivateDnsName']
-    instancePrivIp = instanceInfo['PrivateIpAddress']
-    # instancePubName = instanceInfo['PublicDnsName']
+    ec2_private_name = ec2_info['PrivateDnsName']
+    ec2_private_ip = ec2_info['PrivateIpAddress']
+    # ec2_public_name = ec2_info['PublicDnsName']
 
-    print('Attach to recovery-instance at ' + instancePrivName, end='')
-    print(' (' + instancePrivIp + ')')
+    print('Attach to recovery-instance at ' + ec2_private_name, end='')
+    print(' (' + ec2_private_ip + ')')
 
 
-def recovery_ec2_add_access(instanceId, securityGroups):
+def recovery_ec2_add_access(ec2_id, security_groups):
     """
     Attach security-groups to recovery-instance
     """
 
-    secGrpList = securityGroups.split(',')
+    security_group_list = security_groups.split(',')
 
-    if len(secGrpList) <= 5:
+    if len(security_group_list) <= 5:
         print()
-        for secGrp in secGrpList:
-            print('Attempting to add security-group ' + secGrp, end='')
-            print(' to ' + instanceId + '... ', end='')
+        for security_group in security_group_list:
+            print('Attempting to add security-group ' + security_group, end='')
+            print(' to ' + ec2_id + '... ', end='')
             try:
                 EC2_CLIENT.modify_instance_attribute(
-                    Groups=[secGrp],
-                    InstanceId=instanceId,
+                    Groups=[security_group],
+                    InstanceId=ec2_id,
                 )
                 print('Success')
             except:
@@ -177,70 +177,70 @@ def recovery_ec2_add_access(instanceId, securityGroups):
         print('List of security-groups too long. Skipping')
 
 
-def ebs_get_snap_info(snapSearchVal):
+def ebs_get_snap_info(snap_search_value):
     """
     Get information from targeted-snapshots
     """
-    snapInfo = EC2_CLIENT.describe_snapshots(
+    snapshot_info = EC2_CLIENT.describe_snapshots(
         Filters=[
             {
                 'Name': 'tag:'+SNAP_SEARCH_TAG,
                 'Values': [
-                    snapSearchVal
+                    snap_search_value
                 ]
             }
         ]
     )
 
     # Make sure we actually found snapshots to reconstitute...
-    if len(snapInfo['Snapshots']) == 0:
+    if len(snapshot_info['Snapshots']) == 0:
         sys.exit("Found no matching snapshots to reconstitute: aborting")
 
-    return snapInfo
+    return snapshot_info
 
 
-def ebs_snap_reconstitute(buildAz, ebsType, snapAttribs):
+def ebs_snap_reconstitute(build_az, ebs_type, snapshot_attributes):
     """
     Reconstitute EBSes from snapshots
     """
 
-    ebsList = []
+    ebs_list = []
 
     # Iterate over snapshot-list
-    for snapshot in snapAttribs:
+    for snapshot in snapshot_attributes:
         # Get useful info from snapshot's data
-        origInstance = snapAttribs[snapshot][SNAP_EC2_ID_TAG]
-        origAttach = snapAttribs[snapshot][SNAP_DEV_TAG]
+        original_ec2 = snapshot_attributes[snapshot][SNAP_EC2_ID_TAG]
+        original_device = snapshot_attributes[snapshot][SNAP_DEV_TAG]
 
         # Let user know what we're doing
-        print('Creating ' + ebsType + ' volume from ' + snapshot + '... ', end='')
+        print('Creating ' + ebs_type + ' volume from ' + snapshot + '... ', end='')
 
         # Create the volume
-        newVolInfo = EC2_CLIENT.create_volume(
-            AvailabilityZone=buildAz,
+        volume_info = EC2_CLIENT.create_volume(
+            AvailabilityZone=build_az,
             SnapshotId=snapshot,
-            VolumeType=ebsType,
+            VolumeType=ebs_type,
             TagSpecifications=[
                 {
                     'ResourceType': 'volume',
                     'Tags': [
                         {
                             'Key': 'Original Instance',
-                            'Value': origInstance
+                            'Value': original_ec2
                         },
                         {
                             'Key': 'Original Attachment',
-                            'Value': origAttach
+                            'Value': original_device
                         },
                     ]
                 },
             ]
         )
 
-        print(newVolInfo['VolumeId'])
-        ebsList.append(newVolInfo)
+        print(volume_info['VolumeId'])
+        ebs_list.append(volume_info)
 
-    return ebsList
+    return ebs_list
 
 
 def ebs_snap_tags_to_attribs(snap_search_value):
