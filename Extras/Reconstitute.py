@@ -193,7 +193,7 @@ def ebs_get_snap_info(snap_search_value):
     )
 
     # Make sure we actually found snapshots to reconstitute...
-    if len(snapshot_info['Snapshots']) == 0:
+    if not snapshot_info['Snapshots']:
         sys.exit("Found no matching snapshots to reconstitute: aborting")
 
     return snapshot_info
