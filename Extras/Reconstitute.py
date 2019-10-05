@@ -345,8 +345,8 @@ def userdata_read_file(user_data_file):
     try:
         file_handle = open(user_data_file, 'r')
         file_content = file_handle.read()
-    except:
-        sys.exit('Failed while opening ' + user_data_file)
+    except FileNotFoundError:
+        sys.exit('\nABORTING: Failed while opening ' + user_data_file)
 
     return file_content
 
@@ -389,7 +389,7 @@ def nuke_root_ebs(instance):
         try:
             EC2_CLIENT.describe_volumes(VolumeIds=[target_ebs])
             print('Waiting for ' + target_ebs + ' to die...')
-        except:
+        except EC2_CLIENT.exceptions.ClientError:
             print('Successfully deleted ' + target_ebs)
             break
 
@@ -406,9 +406,10 @@ def validate_subnet(subnet_id):
                 subnet_id
             ]
         )
-        subnet_az = subnet_struct['Subnets'][0]['AvailabilityZone']
-    except:
-        sys.exit('Subnet ' + subnet_id + ' not found')
+    except EC2_CLIENT.exceptions.ClientError:
+        sys.exit('\nERROR: Subnet ' + subnet_id + ' not found. Aborting...')
+
+    subnet_az = subnet_struct['Subnets'][0]['AvailabilityZone']
 
     return subnet_az
 
