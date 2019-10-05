@@ -26,24 +26,25 @@ def recovery_ec2_get_az(ec2_az, snapshot_attributes):
     return rebuild_az
 
 
-def recovery_ec2_make(ami_id, ec2_type, provisioning_key, ec2_subnet, ec2_az, ec2_label):
+def recovery_ec2_make():
     """
     Launch an instance to attach reconstitute EBS volumes to
     """
+
     launch_info_struct = EC2_CLIENT.run_instances(
-        ImageId=ami_id,
-        InstanceType=ec2_type,
-        KeyName=provisioning_key,
+        ImageId=AMI_ID,
+        InstanceType=EC2_TYPE,
+        KeyName=PROV_KEY,
         MaxCount=1,
         MinCount=1,
         NetworkInterfaces=[
             {
                 'DeviceIndex': 0,
-                'SubnetId': ec2_subnet
+                'SubnetId': EC2_SUBNET
             }
         ],
         Placement={
-            'AvailabilityZone': ec2_az
+            'AvailabilityZone': EC2_AZ
         },
         TagSpecifications=[
             {
@@ -51,7 +52,7 @@ def recovery_ec2_make(ami_id, ec2_type, provisioning_key, ec2_subnet, ec2_az, ec
                 'Tags': [
                     {
                         'Key': 'Name',
-                        'Value': ec2_label
+                        'Value': EC2_LABEL
                     }
                 ]
             }
@@ -573,9 +574,7 @@ BUILD_AZ = recovery_ec2_get_az(EC2_AZ, SNAP_ATTRIBS)
 RESTORED_EBS_INFO = ebs_snap_reconstitute(BUILD_AZ, EBS_TYPE, SNAP_ATTRIBS)
 
 # Start recovery-instance and extract requisite data-points from process
-RECOVERY_HOST_INSTANCE_ID = recovery_ec2_make(
-    AMI_ID, EC2_TYPE, PROV_KEY, EC2_SUBNET, BUILD_AZ, EC2_LABEL
-)['Instances'][0]['InstanceId']
+RECOVERY_HOST_INSTANCE_ID = recovery_ec2_make()['Instances'][0]['InstanceId']
 
 # Printout recvoery-instance ID
 print('\nLaunched instance (' + RECOVERY_HOST_INSTANCE_ID + '): ', end='')
