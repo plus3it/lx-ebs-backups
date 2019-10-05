@@ -172,8 +172,9 @@ def recovery_ec2_add_access(ec2_id, security_groups):
                     InstanceId=ec2_id,
                 )
                 print('Success')
-            except:
-                print('Failed')
+            except EC2_CLIENT.exceptions.ClientError:
+                print('ERROR: Failed adding security group ' + security_group \
+                + ' to ' + ec2_id)
     else:
         print('List of security-groups too long. Skipping')
 
@@ -308,8 +309,8 @@ def userdata_inject(recovery_ec2_id, userdata_content):
                 'Value': userdata_content
             },
         )
-    except:
-        sys.exit('Failed to set userData on recovery-instance')
+    except EC2_CLIENT.exceptions.ClientError:
+        sys.exit('ERROR: Failed to set userData on recovery-instance')
 
 
 def userdata_clone(recovery_ec2_id, snap_attributes):
@@ -330,8 +331,8 @@ def userdata_clone(recovery_ec2_id, snap_attributes):
         # Decode the userData
         userdata_text = base64.b64decode(userdata_base64)
 
-    except:
-        print('Unable to determine source instance-Id from snapshot attributes')
+    except EC2_CLIENT.exceptions.ClientError:
+        print('ERROR: Unable to determine source instance-Id from snapshot attributes')
 
     # Push userdata to recovery EC2
     userdata_inject(recovery_ec2_id, userdata_text)
