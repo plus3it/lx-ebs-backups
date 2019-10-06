@@ -66,22 +66,31 @@ def recovery_ec2_check_state(ec2_id):
     """
     Check recovery-instance's state
     """
-    ec2_status = EC2_CLIENT.describe_instance_status(
-        InstanceIds=[
-            ec2_id
-        ]
-    )
-    ec2_info = EC2_CLIENT.describe_instances(
-        InstanceIds=[
-            ec2_id
-        ]
-    )
+
+    try:
+        ec2_status = EC2_CLIENT.describe_instance_status(
+            InstanceIds=[
+                ec2_id
+            ]
+        )
+    except EC2_CLIENT.exceptions.ClientError:
+        raise ValueError('ERROR: Failed fetching status from ' + ec2_id)
+
+    try:
+        ec2_info = EC2_CLIENT.describe_instances(
+            InstanceIds=[
+                ec2_id
+            ]
+        )
+    except EC2_CLIENT.exceptions.ClientError:
+        raise ValueError('ERROR: Failed querying info from ' + ec2_id)
+
     ec2_state = ec2_info['Reservations'][0]['Instances'][0]['State']['Name']
 
     if ec2_state == 'running':
-        if ec2_status['InstanceStatuses'][0]['InstanceStatus']['Status']:
+        try:
             current_state = ec2_status['InstanceStatuses'][0]['InstanceStatus']['Status']
-        else:
+        except IndexError:
             current_state = 'TRANSITIONING'
     else:
         current_state = ec2_state
@@ -104,7 +113,7 @@ def recovery_ec2_monitor_transition(ec2_id, target_state, target_status):
                 print('Waiting for ' + ec2_id, end='')
                 print(' to reach ' + target_state + '... ', end='')
                 time.sleep(10)
-        except:
+        except ValueError:
             print('pending')
             time.sleep(10)
 
