@@ -502,7 +502,6 @@ CMD_OPTS.add_option(
     )
 CMD_OPTS.add_option(
     "-U", "--user-data-file",
-    action="store",
     dest="userdata_file",
     help="Inject userData from selected file"
     )
@@ -564,7 +563,7 @@ USERDATA_BOOL = OPTIONS.userdata_bool
 USERDATA_FILE = OPTIONS.userdata_file
 
 # Handle mutually-exclusive options
-if USERDATA_BOOL is not False and USERDATA_FILE is not False:
+if USERDATA_BOOL and USERDATA_FILE:
     sys.exit('ERROR: `-u` and `-U` are mutually-exclusive options')
 
 # Ensure reconstitution-subnet is valid
