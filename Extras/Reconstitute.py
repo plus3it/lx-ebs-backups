@@ -471,6 +471,47 @@ def validate_provision_key():
         )
 
 
+def validate_security_group():
+    """
+    Validate the passed security-group
+    """
+
+    security_group_list = SECURITY_GROUPS.split(',')
+
+    for security_group in security_group_list:
+        # Valid-length check
+        if len(security_group) == 11:
+            match = re.match(r'(sg-)([a-f0-9]{8})', security_group)
+        elif len(security_group) == 20:
+            match = re.match(r'(sg-)([a-f0-9]{17})', security_group)
+        else:
+            sys.exit(
+                'ERROR: requested security-group [' \
+                + security_group + \
+                '] is not a valid string-length. Aborting...'
+            )
+
+        # Regex failure
+        if match == None:
+            sys.exit(
+                'ERROR: security-group [' \
+                + security_group + \
+                '] contains invalid characters. Aborting...'
+            )
+        elif security_group == match.group(0):
+            try:
+                EC2_CLIENT.describe_security_groups(
+                    GroupIds=[
+                    security_group,
+                    ]
+                )
+            except EC2_CLIENT.exceptions.ClientError:
+                sys.exit(
+                    'ERROR: Requested security-group [' \
+                    + security_group + \
+                    '] does not exist. Aborting...'
+                )
+
 
 def validate_subnet(subnet_id):
     """
@@ -631,18 +672,21 @@ USERDATA_FILE = OPTIONS.userdata_file
 if USERDATA_BOOL and USERDATA_FILE:
     sys.exit('ERROR: `-u` and `-U` are mutually-exclusive options')
 
+# Test file-access early so we can save some time/effort
+if USERDATA_FILE:
+    USERDATA_CONTENT = userdata_read_file(USERDATA_FILE)
+
 # Check validity of requested AMI
 validate_ami_id() 
-
-# Check validity of requested provisioning-key
-validate_provision_key()
 
 # Ensure reconstitution-subnet is valid
 EC2_AZ = validate_subnet(EC2_SUBNET)
 
-# Test file-access early so we can save some time/effort
-if USERDATA_FILE:
-    USERDATA_CONTENT = userdata_read_file(USERDATA_FILE)
+# Ensure requested security-group(s) exist
+validate_security_group()
+
+# Check validity of requested provisioning-key
+validate_provision_key()
 
 # Surface snapshots' tags
 SNAP_ATTRIBS = ebs_snap_tags_to_attribs(SNAP_SEARCH_VAL)
