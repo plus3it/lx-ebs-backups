@@ -23,7 +23,7 @@ def recovery_ec2_get_az(ec2_az, snapshot_attributes):
     else:
         rebuild_az = ec2_az
 
-    print('Building resources in: ' + rebuild_az + '\n')
+    print('\nBuilding resources in: ' + rebuild_az + '\n')
     return rebuild_az
 
 
@@ -164,29 +164,30 @@ def recovery_ec2_get_connect(ec2_id):
     print(' (' + ec2_private_ip + ')')
 
 
-def recovery_ec2_add_access(ec2_id, security_groups):
+def recovery_ec2_add_access(ec2_id, security_group_list):
     """
     Attach security-groups to recovery-instance
     """
 
-    security_group_list = security_groups.split(',')
+    print(
+        '\nAttaching security-groups to recovery-instance [' \
+        + ec2_id + \
+        ']... ', end=''
+        )
 
-    if len(security_group_list) <= 5:
-        print()
-        for security_group in security_group_list:
-            print('Attempting to add security-group ' + security_group, end='')
-            print(' to ' + ec2_id + '... ', end='')
-            try:
-                EC2_CLIENT.modify_instance_attribute(
-                    Groups=[security_group],
-                    InstanceId=ec2_id,
-                )
-                print('Success')
-            except EC2_CLIENT.exceptions.ClientError:
-                print('ERROR: Failed adding security group ' + security_group \
-                + ' to ' + ec2_id)
-    else:
-        print('List of security-groups too long. Skipping')
+    try:
+        EC2_CLIENT.modify_instance_attribute(
+            Groups=security_group_list,
+            InstanceId=ec2_id
+        )
+        print('Success')
+    except EC2_CLIENT.exceptions.ClientError:
+        print(
+            '\nERROR: Failed adding security group ' \
+            + security_group + \
+            ' to ' \
+            + ec2_id
+            )
 
 
 def ebs_get_snap_info(snap_search_value):
@@ -411,18 +412,28 @@ def validate_ami_id():
     Make sure the requested AMI-ID is a valid-string and exists in the region
     """
 
+    print('Making sure requesed AMI is valid... ')
+
     # Valid-length check
     if len(AMI_ID) == 12:
         match = re.match(r'(ami-)([a-f0-9]{8})', AMI_ID)
     elif len(AMI_ID) == 21:
         match = re.match(r'(ami-)([a-f0-9]{17})', AMI_ID)
     else:
-        sys.exit('ERROR: AMI ' + AMI_ID + ' is not a valid length. Aborting...')
+        sys.exit(
+            'ERROR: AMI id-string [' \
+            + AMI_ID + \
+            '] is not a valid length. Aborting...'
+            )
 
 
     # Regex failure
     if match is None:
-        sys.exit('ERROR: AMI ' + AMI_ID + ' contains invalid characters. Aborting...')
+        sys.exit(
+            'ERROR: AMI id-string[' \
+            + AMI_ID + \
+            '] contains invalid characters. Aborting...'
+            )
     # Regex success
     elif AMI_ID == match.group(0):
         try:
@@ -431,6 +442,7 @@ def validate_ami_id():
                     AMI_ID
                 ]
             )
+            print('\tRequested AMI is valid')
         except EC2_CLIENT.exceptions.ClientError:
             sys.exit('ERROR: AMI ' + AMI_ID + ' not found. Aborting...')
     else:
@@ -476,7 +488,14 @@ def validate_security_group():
     Validate the passed security-group
     """
 
+    print('Validating list of security-groups:')
     security_group_list = SECURITY_GROUPS.split(',')
+
+    # Trim the list as necessary
+    if len(security_group_list) > 5:
+        print('List of security-groups too long. Truncating...')
+        while len(security_group_list) > 5:
+            print('Removing ' + security_group_list.pop() + 'from list...')
 
     for security_group in security_group_list:
         # Valid-length check
@@ -509,6 +528,8 @@ def validate_security_group():
                     + security_group + \
                     '] does not exist. Aborting...'
                 )
+
+    return security_group_list
 
 
 def validate_subnet(subnet_id):
@@ -701,7 +722,7 @@ validate_ami_id()
 EC2_AZ = validate_subnet(EC2_SUBNET)
 
 # Ensure requested security-group(s) exist
-validate_security_group()
+SECURITY_GROUP_LIST = validate_security_group()
 
 # Check validity of requested provisioning-key
 validate_provision_key()
@@ -741,7 +762,7 @@ ebs_reconstitution_attach(RECOVERY_HOST_INSTANCE_ID, RESTORED_EBS_INFO)
 
 # Attach security-groups to instance
 if SECURITY_GROUPS:
-    recovery_ec2_add_access(RECOVERY_HOST_INSTANCE_ID, SECURITY_GROUPS)
+    recovery_ec2_add_access(RECOVERY_HOST_INSTANCE_ID, SECURITY_GROUP_LIST)
 
 # Inject userData from file if requested
 if USERDATA_FILE:
