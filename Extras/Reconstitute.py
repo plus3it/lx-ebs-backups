@@ -9,7 +9,7 @@ import sys
 import re
 import time
 import base64
-from optparse import OptionParser
+import argparse
 import boto3
 
 def recovery_ec2_get_az(ec2_az, snapshot_attributes):
@@ -535,136 +535,156 @@ def validate_subnet(subnet_id):
 EC2_CLIENT = boto3.client('ec2')
 
 # Define option-parsing information
-CMD_OPTS = OptionParser()
-CMD_OPTS.add_option(
-    "-a", "--recovery-ami",
-    action="store",
-    dest="recovery_ami_id",
-    help="AMI ID to launch recovery-instance from",
-    type="string"
+CMD_OPTS = argparse.ArgumentParser(description='process flags and args')
+CMD_OPTS.add_argument(
+    '-a', '--recovery-ami',
+    action='store',
+    dest='recovery_ami_id',
+    help='AMI ID to launch recovery-instance from',
+    type=str
     )
-CMD_OPTS.add_option(
-    "-e", "--ebs-type",
-    action="store",
-    default="gp2",
-    dest="ebs_volume_type",
-    help="Type of EBS volume to create from snapshots (Default: %default)",
-    type="string"
+
+CMD_OPTS.add_argument(
+    '-e', '--ebs-type',
+    action='store',
+    default='gp2',
+    dest='ebs_volume_type',
+    help='Type of EBS volume to create from snapshots (Default: gp2)',
+    type=str
     )
-CMD_OPTS.add_option(
-    "-k", "--provisioning-key",
-    action="store",
-    dest="provisioning_key",
-    help="SSH key to inject into recovery-instance [**NOT YET IMPLEMENTED**]",
-    type="string"
-    )
-CMD_OPTS.add_option(
-    "-P", "--power-on",
-    action="store_true",
-    dest="recovery_power",
-    default=False,
-    help="Power on the recovered instance (Default: %default)"
-    )
-CMD_OPTS.add_option(
-    "-n", "--recovery-hostname",
-    action="store",
-    dest="recovery_hostname",
-    help="Name to assign to recovery-instance (as shown in EC2 console/CLI)",
-    type="string"
-    )
-CMD_OPTS.add_option(
-    "-r", "--root-snapid",
-    action="store",
-    dest="root_snapid",
+CMD_OPTS.add_argument(
+    '-k', '--provisioning-key',
+    action='store',
+    dest='provisioning_key',
     help=(
-        "Snapshot-ID of original instance's root EBS (if not part of \
-        snapshot-group) [**NOT YET IMPLEMENTED**]"
-    ),
-    type="string"
+        'SSH key to provision recovery-instance with (Note: if userData \
+        file specifies setup of a default-user, that user will receive \
+        this key'
+        ),
+    type=str
     )
-CMD_OPTS.add_option(
+CMD_OPTS.add_argument(
+    '-P', '--power-on',
+    action='store_true',
+    dest='recovery_power',
+    default=False,
+    help='Power on the recovered instance (Boolean: specifying requests "on")'
+    )
+CMD_OPTS.add_argument(
+    '-n', '--recovery-ec2name',
+    action='store',
+    dest='recovery_ec2name',
+    help='Name to assign to recovery-instance (as shown in EC2 console/CLI)',
+    type=str
+    )
+CMD_OPTS.add_argument(
+    '-r', '--root-snapid',
+    action='store',
+    dest='root_snapid',
+    help=(
+        'Snapshot-ID of original instance\'s root EBS (if not part of \
+        snapshot-group) [**NOT YET IMPLEMENTED**]'
+        ),
+    type=str
+    )
+CMD_OPTS.add_argument(
     "-S", "--search-string",
     action="store",
     dest="search_string",
-    help="String-value to search for (use commas to search for more than one string-value)",
-    type="string"
+    help=(
+        'String-value to search for (use commas to search for more than \
+        one string-value)'
+        ),
+    type=str
     )
-CMD_OPTS.add_option(
-    "-s", "--deployment-subnet",
-    action="store",
-    dest="deployment_subnet",
-    help="Subnet ID to deploy recovery-instance into",
-    type="string"
+CMD_OPTS.add_argument(
+    '-s', '--deployment-subnet',
+    action='store',
+    dest='deployment_subnet',
+    help='Subnet ID to deploy recovery-instance into',
+    type=str
     )
-CMD_OPTS.add_option(
-    "-t", "--instance-type",
-    action="store",
-    default="t3.large",
-    dest="recovery_instance_type",
-    help="Instance-type to use for recovery-instance (Default: %default)",
-    type="string"
+CMD_OPTS.add_argument(
+    '-t', '--instance-type',
+    action='store',
+    default='t3.large',
+    dest='recovery_instance_type',
+    help='Instance-type to use for recovery-instance (Default: t3.large)',
+    type=str
     )
-CMD_OPTS.add_option(
-    "-U", "--user-data-file",
-    dest="userdata_file",
-    help="Inject userData from selected file"
+CMD_OPTS.add_argument(
+    '-U', '--user-data-file',
+    dest='userdata_file',
+    help='Inject userData from selected file'
     )
-CMD_OPTS.add_option(
-    "-u", "--user-data-clone",
-    action="store_true",
+CMD_OPTS.add_argument(
+    '-u', '--user-data-clone',
+    action='store_true',
     default=False,
-    dest="userdata_bool",
-    help="Attempt to clone userData from source instance (Default: %default)"
+    dest='userdata_bool',
+    help=(
+        'Attempt to clone userData from source instance (Boolean: specifying \
+        requests userData-cloning)'
+        )
     )
-CMD_OPTS.add_option(
-    "-x", "--access-groups",
-    action="store",
-    dest="recovery_sg",
-    help="Security-groups to assign to recovery-instance",
-    type="string"
+CMD_OPTS.add_argument(
+    '-x', '--access-groups',
+    action='store',
+    dest='recovery_sg',
+    help='Security-groups to assign to recovery-instance',
+    type=str
     )
-CMD_OPTS.add_option(
-    "--alt-search-tag",
-    action="store",
-    default="Snapshot Group",
-    dest="search_tag",
-    help="Snapshot-attribute used to find grouped-snapshots (Default: '%default')",
-    type="string"
+CMD_OPTS.add_argument(
+    '--alt-search-tag',
+    action='store',
+    default='Snapshot Group',
+    dest='search_tag',
+    help=(
+        'Snapshot-attribute used to find grouped-snapshots \
+	(Default: "Snapshot Group")'
+    ),
+    type=str
     )
-CMD_OPTS.add_option(
-    "--alt-ec2-tag",
-    action="store",
-    default="Original Instance",
-    dest="original_ec2_tag",
-    help="Snapshot-attribute containing original EC2 ID (Default: '%default')",
-    type="string"
+CMD_OPTS.add_argument(
+    '--alt-ec2-tag',
+    action='store',
+    default='Original Instance',
+    dest='original_ec2_tag',
+    help=(
+        'Snapshot-attribute containing original EC2 ID \
+        (Default: "Original Instance")'
+    ),
+    type=str
     )
-CMD_OPTS.add_option(
-    "--alt-device-tag",
-    action="store",
-    default="Original Attachment",
-    dest="original_device_tag",
-    help="Snapshot-attribute containing original EBS attachment-info (Default: '%default')",
-    type="string"
+CMD_OPTS.add_argument(
+    '--alt-device-tag',
+    action='store',
+    default='Original Attachment',
+    dest='original_device_tag',
+    help=(
+        'Snapshot-attribute containing original EBS attachment-info \
+        (Default: "Original Attachment")'
+    ),
+    type=str
     )
 
 # Parse the command options
-(OPTIONS, ARGS) = CMD_OPTS.parse_args()
-AMI_ID = OPTIONS.recovery_ami_id
-EBS_TYPE = OPTIONS.ebs_volume_type
-EC2_LABEL = OPTIONS.recovery_hostname
-EC2_SUBNET = OPTIONS.deployment_subnet
-EC2_TYPE = OPTIONS.recovery_instance_type
-POWER_ON = OPTIONS.recovery_power
-PROV_KEY = OPTIONS.provisioning_key
-ROOT_SNAP = OPTIONS.root_snapid
-SECURITY_GROUPS = OPTIONS.recovery_sg
-SNAP_SEARCH_TAG = OPTIONS.search_tag
-SNAP_SEARCH_VAL = OPTIONS.search_string
-SNAP_EC2_ID_TAG = OPTIONS.original_ec2_tag
-SNAP_DEV_TAG = OPTIONS.original_device_tag
-USERDATA_BOOL = OPTIONS.userdata_bool
-USERDATA_FILE = OPTIONS.userdata_file
+ARGS = CMD_OPTS.parse_args()
+AMI_ID = ARGS.recovery_ami_id
+EBS_TYPE = ARGS.ebs_volume_type
+EC2_LABEL = ARGS.recovery_ec2name
+EC2_SUBNET = ARGS.deployment_subnet
+EC2_TYPE = ARGS.recovery_instance_type
+POWER_ON = ARGS.recovery_power
+PROV_KEY = ARGS.provisioning_key
+ROOT_SNAP = ARGS.root_snapid
+SECURITY_GROUPS = ARGS.recovery_sg
+SNAP_SEARCH_TAG = ARGS.search_tag
+SNAP_SEARCH_VAL = ARGS.search_string
+SNAP_EC2_ID_TAG = ARGS.original_ec2_tag
+SNAP_DEV_TAG = ARGS.original_device_tag
+USERDATA_BOOL = ARGS.userdata_bool
+USERDATA_FILE = ARGS.userdata_file
 
 # Handle mutually-exclusive options
 if USERDATA_BOOL and USERDATA_FILE:
