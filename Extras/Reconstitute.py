@@ -437,6 +437,21 @@ def validate_ami_id():
         sys.exit('ERROR: AMI ' + AMI_ID + ' is an invalid value. Aborting...')
 
 
+def validate_provision_key():
+    """
+    Make sure the requested provisioning-key exists in the account
+    """
+
+    try:
+        EC2_CLIENT.describe_key_pairs(KeyNames=[PROV_KEY])
+    except EC2_CLIENT.exceptions.ClientError:
+        sys.exit(
+            'ERROR: requested provisioning-key [' + PROV_KEY + \
+            '] not found. Aborting...'
+        )
+
+
+
 def validate_subnet(subnet_id):
     """
     Validate the passed subnet
@@ -598,6 +613,9 @@ if USERDATA_BOOL and USERDATA_FILE:
 
 # Check validity of requested AMI
 validate_ami_id() 
+
+# Check validity of requested provisioning-key
+validate_provision_key()
 
 # Ensure reconstitution-subnet is valid
 EC2_AZ = validate_subnet(EC2_SUBNET)
