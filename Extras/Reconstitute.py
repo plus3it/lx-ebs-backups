@@ -6,6 +6,7 @@ for detailed usage-instructions.
 """
 
 import sys
+import re
 import time
 import base64
 from optparse import OptionParser
@@ -405,6 +406,37 @@ def nuke_root_ebs(instance):
             break
 
 
+def validate_ami_id():
+    """
+    Make sure the requested AMI-ID is a valid-string and exists in the region
+    """
+
+    # Valid-length check
+    if len(AMI_ID) == 12:
+        match = re.match(r'(ami-)([a-f0-9]{8})', AMI_ID)
+    elif len(AMI_ID) == 21:
+        match = re.match(r'(ami-)([a-f0-9]{17})', AMI_ID)
+    else:
+        sys.exit('ERROR: AMI ' + AMI_ID + ' is not a valid length. Aborting...')
+
+
+    # Regex failure
+    if match == None:
+        sys.exit('ERROR: AMI ' + AMI_ID + ' contains invalid characters. Aborting...')
+    # Regex success
+    elif AMI_ID == match.group(0):
+        try:
+            EC2_CLIENT.describe_images(
+                ImageIds=[
+                    AMI_ID
+                ]
+            )
+        except EC2_CLIENT.exceptions.ClientError:
+            sys.exit('ERROR: AMI ' + AMI_ID + ' not found. Aborting...')
+    else:
+        sys.exit('ERROR: AMI ' + AMI_ID + ' is an invalid value. Aborting...')
+
+
 def validate_subnet(subnet_id):
     """
     Validate the passed subnet
@@ -423,8 +455,6 @@ def validate_subnet(subnet_id):
     subnet_az = subnet_struct['Subnets'][0]['AvailabilityZone']
 
     return subnet_az
-
-
 
 
 # Make our connections to the service
@@ -565,6 +595,9 @@ USERDATA_FILE = OPTIONS.userdata_file
 # Handle mutually-exclusive options
 if USERDATA_BOOL and USERDATA_FILE:
     sys.exit('ERROR: `-u` and `-U` are mutually-exclusive options')
+
+# Check validity of requested AMI
+validate_ami_id() 
 
 # Ensure reconstitution-subnet is valid
 EC2_AZ = validate_subnet(EC2_SUBNET)
