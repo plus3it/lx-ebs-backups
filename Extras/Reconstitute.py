@@ -437,6 +437,26 @@ def validate_ami_id():
         sys.exit('ERROR: AMI ' + AMI_ID + ' is an invalid value. Aborting...')
 
 
+## def validate_instance_type():
+##     """
+##     Check requested instance-type against those available in-region
+##     """
+##
+##     print(
+##         'Information about available instance-types can be retrieved from 
+##         a region-url like: \
+##         \
+##         https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/index.json \
+##         \
+##         then pulling data from the url returned in the \
+##         \
+##         .offers.AmazonEC2.currentVersionUrl \
+##         \
+##         attribute. However, this is a long, expensive process ill-suited to \
+##         a simple validity-check exercise.'
+##     )
+
+
 def validate_provision_key():
     """
     Make sure the requested provisioning-key exists in the account
