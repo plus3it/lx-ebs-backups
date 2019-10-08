@@ -421,7 +421,7 @@ def validate_ami_id():
 
 
     # Regex failure
-    if match == None:
+    if match is None:
         sys.exit('ERROR: AMI ' + AMI_ID + ' contains invalid characters. Aborting...')
     # Regex success
     elif AMI_ID == match.group(0):
@@ -443,7 +443,7 @@ def validate_ami_id():
 ##     """
 ##
 ##     print(
-##         'Information about available instance-types can be retrieved from 
+##         'Information about available instance-types can be retrieved from
 ##         a region-url like: \
 ##         \
 ##         https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/index.json \
@@ -492,7 +492,7 @@ def validate_security_group():
             )
 
         # Regex failure
-        if match == None:
+        if match is None:
             sys.exit(
                 'ERROR: security-group [' \
                 + security_group + \
@@ -501,9 +501,7 @@ def validate_security_group():
         elif security_group == match.group(0):
             try:
                 EC2_CLIENT.describe_security_groups(
-                    GroupIds=[
-                    security_group,
-                    ]
+                    GroupIds=[security_group]
                 )
             except EC2_CLIENT.exceptions.ClientError:
                 sys.exit(
@@ -677,7 +675,7 @@ if USERDATA_FILE:
     USERDATA_CONTENT = userdata_read_file(USERDATA_FILE)
 
 # Check validity of requested AMI
-validate_ami_id() 
+validate_ami_id()
 
 # Ensure reconstitution-subnet is valid
 EC2_AZ = validate_subnet(EC2_SUBNET)
