@@ -225,32 +225,77 @@ def ebs_snap_reconstitute(build_az, ebs_type, snapshot_attributes):
         original_ec2 = snapshot_attributes[snapshot][SNAP_EC2_ID_TAG]
         original_device = snapshot_attributes[snapshot][SNAP_DEV_TAG]
 
-        # Let user know what we're doing
-        print('Creating ' + ebs_type + ' volume from ' + snapshot + '... ', end='')
+        print(
+            'Creating ' + ebs_type + ' volume from ' \
+            + snapshot + '... ', end=''
+            )
 
-        # Create the volume
-        volume_info = EC2_CLIENT.create_volume(
-            AvailabilityZone=build_az,
-            SnapshotId=snapshot,
-            VolumeType=ebs_type,
-            TagSpecifications=[
-                {
-                    'ResourceType': 'volume',
-                    'Tags': [
+        if ebs_type == 'io1':
+            try:
+                vol_iops = validate_io1_config(
+                    snapshot_attributes[snapshot]['VolumeSize']
+                    )
+
+                volume_info = EC2_CLIENT.create_volume(
+                    AvailabilityZone=build_az,
+                    Iops=vol_iops,
+                    SnapshotId=snapshot,
+                    TagSpecifications=[
                         {
-                            'Key': 'Original Instance',
-                            'Value': original_ec2
+                            'ResourceType': 'volume',
+                            'Tags': [
+                                {
+                                    'Key': 'Original Instance',
+                                    'Value': original_ec2
+                                },
+                                {
+                                    'Key': 'Original Attachment',
+                                    'Value': original_device
+                                },
+                            ]
                         },
+                    ],
+                    VolumeType=ebs_type
+                )
+                print(volume_info['VolumeId'])
+            except ValueError as err_string:
+                sys.exit('FAILED: ' + str(err_string) + ' Aborting... ')
+            except EC2_CLIENT.exceptions.ClientError:
+                sys.exit('FAILED. Aborting... ')
+        elif ebs_type == 'gp2':
+            try:
+                volume_info = EC2_CLIENT.create_volume(
+                    AvailabilityZone=build_az,
+                    SnapshotId=snapshot,
+                    VolumeType=ebs_type,
+                    TagSpecifications=[
                         {
-                            'Key': 'Original Attachment',
-                            'Value': original_device
+                            'ResourceType': 'volume',
+                            'Tags': [
+                                {
+                                    'Key': 'Original Instance',
+                                    'Value': original_ec2
+                                },
+                                {
+                                    'Key': 'Original Attachment',
+                                    'Value': original_device
+                                },
+                            ]
                         },
                     ]
-                },
-            ]
-        )
+                )
+                print(volume_info['VolumeId'])
+            except ValueError as err_string:
+                sys.exit('FAILED: ' + str(err_string) + ' Aborting... ')
+            except EC2_CLIENT.exceptions.ClientError:
+                sys.exit('FAILED. Aborting... ')
+        else:
+            sys.exit(
+                'ERROR: requested volume-type "' \
+                + ebs_type + \
+                '" not currently supported. Aborting... '
+                )
 
-        print(volume_info['VolumeId'])
         ebs_list.append(volume_info)
 
     return ebs_list
@@ -265,6 +310,7 @@ def ebs_snap_tags_to_attribs(snap_search_value):
     for snapshot_info in ebs_get_snap_info(snap_search_value)['Snapshots']:
         snap_attributes = {}
         snapshot_id = snapshot_info['SnapshotId']
+        snap_attributes['VolumeSize'] = snapshot_info['VolumeSize']
 
         for tags in snapshot_info['Tags']:
             tag_list = list(tags.values())
@@ -449,6 +495,32 @@ def validate_ami_id():
         sys.exit('ERROR: AMI ' + AMI_ID + ' is an invalid value. Aborting...')
 
 
+def validate_io1_config(snap_size):
+    if snap_size < 4:
+        raise ValueError(
+            'Requested volume-size [' \
+            + str(snap_size) + \
+            '] is less than minimum allowed [4].'
+            )
+
+    if EBS_IOPS > 0:
+        if (EBS_IOPS < 3) or (EBS_IOPS > 50):
+            sys.exit('Value out of range: must be 3-50')
+        vol_iops = snap_size * EBS_IOPS
+    else:
+        sys.exit('Specified EBS-type ' + EBS_TYPE + ' but failed to specify an IOPs-ratio. Aborting...')
+
+    # Keep within provisionable range
+    if vol_iops < 100:
+        vol_iops = 100
+    elif vol_iops > 64000:
+        vol_iops = 64000
+
+    return vol_iops
+
+
+##
+##
 ## def validate_instance_type():
 ##     """
 ##     Check requested instance-type against those available in-region
@@ -574,6 +646,14 @@ CMD_OPTS.add_argument(
     type=str
     )
 CMD_OPTS.add_argument(
+    '-i', '--iops-ratio',
+    action='store',
+    default='0',
+    dest='ebs_req_iops',
+    help='Provisioned IOPs - specified as GiB:IOPs ratio (Mandatory for some EBS-types; ignored for others)',
+    type=int
+    )
+CMD_OPTS.add_argument(
     '-k', '--provisioning-key',
     action='store',
     dest='provisioning_key',
@@ -585,18 +665,18 @@ CMD_OPTS.add_argument(
     type=str
     )
 CMD_OPTS.add_argument(
-    '-P', '--power-on',
-    action='store_true',
-    dest='recovery_power',
-    default=False,
-    help='Power on the recovered instance (Boolean: specifying requests "on")'
-    )
-CMD_OPTS.add_argument(
     '-n', '--recovery-ec2name',
     action='store',
     dest='recovery_ec2name',
     help='Name to assign to recovery-instance (as shown in EC2 console/CLI)',
     type=str
+    )
+CMD_OPTS.add_argument(
+    '-P', '--power-on',
+    action='store_true',
+    dest='recovery_power',
+    default=False,
+    help='Power on the recovered instance (Boolean: specifying requests "on")'
     )
 CMD_OPTS.add_argument(
     '-r', '--root-snapid',
@@ -693,6 +773,7 @@ CMD_OPTS.add_argument(
 ARGS = CMD_OPTS.parse_args()
 AMI_ID = ARGS.recovery_ami_id
 EBS_TYPE = ARGS.ebs_volume_type
+EBS_IOPS = ARGS.ebs_req_iops
 EC2_LABEL = ARGS.recovery_ec2name
 EC2_SUBNET = ARGS.deployment_subnet
 EC2_TYPE = ARGS.recovery_instance_type
@@ -715,6 +796,7 @@ if USERDATA_BOOL and USERDATA_FILE:
 if USERDATA_FILE:
     USERDATA_CONTENT = userdata_read_file(USERDATA_FILE)
 
+# Check validity of requested EBS config
 # Check validity of requested AMI
 validate_ami_id()
 
