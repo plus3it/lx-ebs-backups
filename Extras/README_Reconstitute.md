@@ -11,11 +11,12 @@ The `Reconstitute.py` utility accepts the following arguments:
 * `-h` or `--help`: Shows information about available flags and associated arguments. Specifying this flag causes the script to immediately exit after printing the help-contents &mdash; whether or not other flags and arguments are specified.
 * `-a` or ` --recovery-ami`: Requires a valid AMI ID as argument. This script can automatically recover both Linux- and Windows-based EC2s. It is expected that the supplied AMI ID will be either same as the one used to create the source EC2 or in the same AMI-family (e.g. [spel](https://github.com/plus3it/spel) AMIs). It's possible that other AMIs will suffice, but such has not been tested.
 * `-e` or `--ebs-type`: Requires a valid EBS-type as argument. The specified type is used during the process of reconstituting target snapshots as EBS volumes. Valid values are:
-    * `standard`: Legacy "magnetic" volumes.
-    * `io1`: Provisioned IOPS SSD [**NOT YET SUPPORTED**]
+    * `standard`: Legacy "magnetic" volumes. [**NOT CURRENTLY SUPPORTED**]
+    * `io1`: Provisioned IOPS SSD
     * `gp2`: Basic 'SSD' volume-type. (Default: leave flag unspecified if using this value)
-    * `sc1`: "Cold" HDD (See: AWS [blog entry](https://aws.amazon.com/blogs/aws/amazon-ebs-update-new-cold-storage-and-throughput-options/))
-    * `st1`: Throughput-optimized HDD
+    * `sc1`: "Cold" HDD (See: AWS [blog entry](https://aws.amazon.com/blogs/aws/amazon-ebs-update-new-cold-storage-and-throughput-options/)) [**NOT CURRENTLY SUPPORTED**]
+    * `st1`: Throughput-optimized HDD [**NOT CURRENTLY SUPPORTED**]
+* `-i` or `--iops-ratio`: Specify IOPs-ratio to use when reconstituting to `io1` EBS volumes (min:3; max: 50). Ignored if other volume-type is requested
 * `-k` or `--provisioning-key`: SSH key to inject into recovery-instance [**NOT YET IMPLEMENTED**]
 * `-P` or `--power-on`: Power on the recovered instance (Boolean: specify to enable end-of-recovery power-on; leave unspecified if ecovery-instance should remain powerd off)
 * `-n` or `--recovery-hostname`: AWS-level name to assign to recovery-instance (as shown in EC2 console/CLI: does not effect recovered instance's internal hostname value)
