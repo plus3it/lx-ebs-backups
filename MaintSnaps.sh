@@ -23,7 +23,7 @@ TZ=zulu
 # Put the bulk of our variables into an external file so they
 # can be easily re-used across scripts
 source "${PROGDIR}/commonVars.env"
-source "${PROGDIR}/setcred.sh" && PROGNAME="$( basename "${BASH_SOURCE[0]}" )"
+source PROGNAME="$( basename "${BASH_SOURCE[0]}" )"
 
 
 # Grab a filtered list candidate snapshots and dump to an array
