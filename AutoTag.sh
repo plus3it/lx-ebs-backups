@@ -152,7 +152,7 @@ LOOP=0
 for EBSVOL in ${EBSVOLIDS}
 do
    EBSDEV="$( MapVolIdToDsk "${EBSVOL}" )"
-   EBSMAP[${LOOP}]="${EBSVOL}:${EBSDEV}"
+   EBSMAP[LOOP]="${EBSVOL}:${EBSDEV}"
    LOOP=$(( LOOP + 1 ))
 done  && echo "Done." || echo "Failed."
 
