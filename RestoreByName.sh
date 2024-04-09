@@ -35,6 +35,7 @@ EBSTYPE="standard"
 
 # Put the bulk of our variables into an external file so they
 # can be easily re-used across scripts
+# shellcheck source=/dev/null
 source "${PROGDIR}/commonVars.env"
 
 # Output log-data to multiple locations
@@ -98,7 +99,7 @@ function SnapToEBS() {
       else
 	 aws ec2 create-tags --resource "${NEWEBS}" --tags \
 	    "Key=Name,Value=Restore of ${SNAPGRP}"
-         VOLLIST[${COUNT}]="${NEWEBS}"
+         VOLLIST[COUNT]="${NEWEBS}"
          COUNT=$(( COUNT + 1 ))
       fi
    done

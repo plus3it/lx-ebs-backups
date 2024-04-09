@@ -22,6 +22,7 @@ TZ=zulu
 
 # Put the bulk of our variables into an external file so they
 # can be easily re-used across scripts
+# shellcheck source=/dev/null
 source "${PROGDIR}/commonVars.env"
 source PROGNAME="$( basename "${BASH_SOURCE[0]}" )"
 
@@ -56,7 +57,7 @@ function SnapListToArray {
       SNAPDESC=$(echo "${SNAPLIST}" | cut -d ";" -f 3)
       SNAPGRUP=$(echo "${SNAPDESC}" | sed 's/^.*-bkup-/GROUP_/')
       FIXLIST="${SNAPIDEN};${SNAPTIME};${SNAPGRUP}"
-      SNAPARRAY[${COUNT}]="${FIXLIST}"
+      SNAPARRAY[COUNT]="${FIXLIST}"
       COUNT=$(( COUNT + 1 ))
    done
 }
