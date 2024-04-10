@@ -12,7 +12,7 @@ MDDOCPATH="latest/dynamic/instance-identity/document"
 MDDOCINFO=$(curl -s http://${MDHOST}/${MDDOCPATH}/)
 
 # Lets force the use of credentials from attached IAM Instance-role
-source "${PROGDIR}/setcred.sh" && PROGNAME="$( basename "${BASH_SOURCE[0]}" )"
+source PROGNAME="$( basename "${BASH_SOURCE[0]}" )"
 
 # Extract data from JSON-struct
 function ExtractFromJson {

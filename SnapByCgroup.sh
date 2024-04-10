@@ -36,8 +36,9 @@ export TOP_PID=$$
 # sourcable files so they can be easily
 # re-used across scripts
 #########################################
+# shellcheck source=/dev/null
 source "${PROGDIR}/commonVars.env"
-source "${PROGDIR}/setcred.sh" && PROGNAME="$( basename "${BASH_SOURCE[0]}" )"
+source PROGNAME="$( basename "${BASH_SOURCE[0]}" )"
 
 # Print out a basic usage message
 function UsageMsg {
@@ -94,7 +95,7 @@ function FsSpec {
    if [[ ${SPECISFS} =~ "is a mountpoint" ]]
    then
       logIt "${1} is a valid filesystem. Continuing... " 0
-      FSLIST[${IDX}]=${1}
+      FSLIST[IDX]=${1}
    else
       logIt "${1} is not a valid filesystem. Aborting... " 1
       kill -s TERM " ${TOP_PID}"
@@ -134,7 +135,7 @@ function FSfreezeToggle {
       do
          logIt "Attempting to ${ACTION} '${FSLIST[${IDX}]}'" 0
 
-	 fsfreeze ${FRZFLAG} "${FSLIST[${IDX}]}" && \
+	 fsfreeze "${FRZFLAG}" "${FSLIST[${IDX}]}" && \
             logIt "${ACTION} succeeded" 0 || \
 	      logIt "${ACTION} on ${FSLIST[${IDX}]} exited abnormally" 1
 
@@ -246,7 +247,7 @@ do
    # Add any relevant tagged-volumes to snap-list
    if [[ ! -z ${VOLCHK} ]]
    then
-      VOLIDS[${COUNT}]="${VOLCHK}"
+      VOLIDS[COUNT]="${VOLCHK}"
    fi
 
    # So people don't think we're stuck
