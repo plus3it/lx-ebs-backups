@@ -52,7 +52,6 @@ def lambda_handler(event, context):
 
         # Iterate volume-list to create snapshots
         for volume in get_vol_list(get_dev_maps()):
-
             # grab info about volume to be snapped
             volume_info = ec2resource.Volume(volume).attachments[0]
             volume_owner = volume_info["InstanceId"]
