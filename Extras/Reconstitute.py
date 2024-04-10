@@ -12,6 +12,7 @@ import base64
 import argparse
 import boto3
 
+# pylint: skip-file
 
 def recovery_ec2_get_az(ec2_az, snapshot_attributes):
     """

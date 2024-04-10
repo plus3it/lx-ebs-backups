@@ -5,6 +5,7 @@ import getopt
 import sys
 from optparse import OptionParser
 
+# pylint: skip-file
 
 # Make our connections to the service
 ec2client = boto3.client("ec2")

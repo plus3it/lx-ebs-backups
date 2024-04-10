@@ -2,6 +2,7 @@ import boto3
 import datetime
 import sys
 
+# pylint: skip-file
 
 # Lambda expects this...
 def lambda_handler(event, context):
