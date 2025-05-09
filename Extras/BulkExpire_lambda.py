@@ -4,6 +4,7 @@ import boto3
 
 # pylint: skip-file
 
+
 # Lambda expects this...
 def lambda_handler(event, context):
     # Make our connections to the service

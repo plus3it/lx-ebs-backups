@@ -14,6 +14,7 @@ import boto3
 
 # pylint: skip-file
 
+
 def recovery_ec2_get_az(ec2_az, snapshot_attributes):
     """
     Print AZ actions will take place in
