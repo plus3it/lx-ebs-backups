@@ -22,8 +22,9 @@ TZ=zulu
 
 # Put the bulk of our variables into an external file so they
 # can be easily re-used across scripts
+# shellcheck source=/dev/null
 source "${PROGDIR}/commonVars.env"
-source "${PROGDIR}/setcred.sh" && PROGNAME="$( basename "${BASH_SOURCE[0]}" )"
+source PROGNAME="$( basename "${BASH_SOURCE[0]}" )"
 
 
 # Grab a filtered list candidate snapshots and dump to an array
@@ -56,7 +57,7 @@ function SnapListToArray {
       SNAPDESC=$(echo "${SNAPLIST}" | cut -d ";" -f 3)
       SNAPGRUP=$(echo "${SNAPDESC}" | sed 's/^.*-bkup-/GROUP_/')
       FIXLIST="${SNAPIDEN};${SNAPTIME};${SNAPGRUP}"
-      SNAPARRAY[${COUNT}]="${FIXLIST}"
+      SNAPARRAY[COUNT]="${FIXLIST}"
       COUNT=$(( COUNT + 1 ))
    done
 }

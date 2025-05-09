@@ -21,9 +21,6 @@ AWS_DEFAULT_REGION="$( echo "${INSTANCEMETADAT}" | \
 # Export critical values so sub-shells can use them
 export AWS_DEFAULT_REGION
 
-# Lets force the use of credentials from attached IAM Instance-role
-source "${PROGDIR}/setcred.sh"
-
 # Check your privilege...
 function AmRoot {
    if [[ $(whoami) = root ]]
@@ -155,7 +152,7 @@ LOOP=0
 for EBSVOL in ${EBSVOLIDS}
 do
    EBSDEV="$( MapVolIdToDsk "${EBSVOL}" )"
-   EBSMAP[${LOOP}]="${EBSVOL}:${EBSDEV}"
+   EBSMAP[LOOP]="${EBSVOL}:${EBSDEV}"
    LOOP=$(( LOOP + 1 ))
 done  && echo "Done." || echo "Failed."
 
