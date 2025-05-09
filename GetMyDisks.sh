@@ -38,9 +38,9 @@ export INSTANCID=$( ExtractFromJson "instanceId" )
 RED='\033[0;31m'
 NC='\033[0m'
 
-if [[ $(test -r /proc/cmdline)$? -eq 0 ]]
+if [[ -r /proc/cmdline ]]
 then
-   if [[ $(grep -q "xen_blkfront.sda_is_xvda=1" /proc/cmdline)$? -eq 0 ]]
+   if grep -q "xen_blkfront.sda_is_xvda=1" /proc/cmdline
    then
       logIt "Root-dev should be /dev/xvda" 0
    else
