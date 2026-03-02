@@ -60,7 +60,7 @@ cmdopts.add_option(
 )
 
 # Parse the command options
-(options, args) = cmdopts.parse_args()
+options, args = cmdopts.parse_args()
 bulk_tag_name = options.bulk_tag_name
 bulk_tag_value = options.bulk_tag_value
 

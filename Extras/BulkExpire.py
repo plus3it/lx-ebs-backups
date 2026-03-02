@@ -43,7 +43,7 @@ cmdopts.add_option(
 )
 
 # Parse the command options
-(options, args) = cmdopts.parse_args()
+options, args = cmdopts.parse_args()
 exp_days = options.exp_days
 tag_key = options.tag_key
 tag_val = options.tag_val
