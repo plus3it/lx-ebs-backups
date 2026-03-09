@@ -613,11 +613,9 @@ CMD_OPTS.add_argument(
     "--provisioning-key",
     action="store",
     dest="provisioning_key",
-    help=(
-        "SSH key to provision recovery-instance with (Note: if userData \
+    help=("SSH key to provision recovery-instance with (Note: if userData \
         file specifies setup of a default-user, that user will receive \
-        this key"
-    ),
+        this key"),
     type=str,
 )
 CMD_OPTS.add_argument(
@@ -641,10 +639,8 @@ CMD_OPTS.add_argument(
     "--root-snapid",
     action="store",
     dest="root_snapid",
-    help=(
-        "Snapshot-ID of original instance's root EBS (if not part of \
-        snapshot-group) [**NOT YET IMPLEMENTED**]"
-    ),
+    help=("Snapshot-ID of original instance's root EBS (if not part of \
+        snapshot-group) [**NOT YET IMPLEMENTED**]"),
     type=str,
 )
 CMD_OPTS.add_argument(
@@ -652,10 +648,8 @@ CMD_OPTS.add_argument(
     "--search-string",
     action="store",
     dest="search_string",
-    help=(
-        "String-value to search for (use commas to search for more than \
-        one string-value)"
-    ),
+    help=("String-value to search for (use commas to search for more than \
+        one string-value)"),
     type=str,
 )
 CMD_OPTS.add_argument(
@@ -687,10 +681,8 @@ CMD_OPTS.add_argument(
     action="store_true",
     default=False,
     dest="userdata_bool",
-    help=(
-        "Attempt to clone userData from source instance (Boolean: specifying \
-        requests userData-cloning)"
-    ),
+    help=("Attempt to clone userData from source instance (Boolean: specifying \
+        requests userData-cloning)"),
 )
 CMD_OPTS.add_argument(
     "-x",
@@ -705,10 +697,8 @@ CMD_OPTS.add_argument(
     action="store",
     default="Snapshot Group",
     dest="search_tag",
-    help=(
-        'Snapshot-attribute used to find grouped-snapshots \
-	(Default: "Snapshot Group")'
-    ),
+    help=('Snapshot-attribute used to find grouped-snapshots \
+	(Default: "Snapshot Group")'),
     type=str,
 )
 CMD_OPTS.add_argument(
@@ -716,10 +706,8 @@ CMD_OPTS.add_argument(
     action="store",
     default="Original Instance",
     dest="original_ec2_tag",
-    help=(
-        'Snapshot-attribute containing original EC2 ID \
-        (Default: "Original Instance")'
-    ),
+    help=('Snapshot-attribute containing original EC2 ID \
+        (Default: "Original Instance")'),
     type=str,
 )
 CMD_OPTS.add_argument(
@@ -727,10 +715,8 @@ CMD_OPTS.add_argument(
     action="store",
     default="Original Attachment",
     dest="original_device_tag",
-    help=(
-        'Snapshot-attribute containing original EBS attachment-info \
-        (Default: "Original Attachment")'
-    ),
+    help=('Snapshot-attribute containing original EBS attachment-info \
+        (Default: "Original Attachment")'),
     type=str,
 )
 
